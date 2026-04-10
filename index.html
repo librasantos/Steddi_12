@@ -1,0 +1,2062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1"/>
+
+  <!-- PWA / iOS install -->
+  <meta name="theme-color" content="#E07840"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="Steddi"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="application-name" content="Steddi"/>
+
+  <!-- SEO / sharing -->
+  <meta name="description" content="A calm focus app for overwhelmed brains. Brain dump, pick one thing, actually start."/>
+  <meta name="keywords" content="ADHD, focus, productivity, burnout, brain dump, task manager"/>
+  <meta property="og:title" content="Steddi — Focus one thing at a time"/>
+  <meta property="og:description" content="A calm focus app for overwhelmed brains. Built for ADHD, burnout, and real life."/>
+  <meta property="og:type" content="website"/>
+  <meta name="twitter:card" content="summary"/>
+  <meta name="twitter:title" content="Steddi — Focus one thing at a time 🐬"/>
+  <meta name="twitter:description" content="A calm focus app for overwhelmed brains. Brain dump, pick one thing, actually start."/>
+
+  <link rel="manifest" href="/manifest.json"/>
+  <link rel="apple-touch-icon" href="/icon-180.png"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png"/>
+  <link rel="apple-touch-icon" sizes="167x167" href="/icon-167.png"/>
+  <link rel="apple-touch-icon" sizes="152x152" href="/icon-152.png"/>
+  <link rel="apple-touch-icon" sizes="120x120" href="/icon-120.png"/>
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png"/>
+  <title>Steddi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: #FDF8F3;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+      overscroll-behavior: none;
+    }
+    #root { min-height: 100vh; min-height: -webkit-fill-available; }
+    button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+    button:focus-visible { outline: 2px solid #2E8B7A; outline-offset: 2px; border-radius: 4px; }
+    input:focus-visible, textarea:focus-visible { outline: 2px solid #2E8B7A; outline-offset: 1px; }
+    input, textarea { font-size: 16px !important; } /* prevents iOS zoom */
+
+    @keyframes breathe {
+      0%,100% { transform: scale(1); opacity:.4; }
+      50% { transform: scale(1.18); opacity:.95; }
+    }
+    @keyframes foxWag {
+      0%,100% { transform: rotate(0deg); }
+      25% { transform: rotate(8deg); }
+      75% { transform: rotate(-8deg); }
+    }
+    @keyframes foxBounce {
+      0%,100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+    @keyframes slideUp {
+      from { opacity:0; transform:translateY(16px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    @keyframes pop {
+      0%   { transform:scale(.88); opacity:0; }
+      65%  { transform:scale(1.04); opacity:1; }
+      100% { transform:scale(1); opacity:1; }
+    }
+    @keyframes pulse {
+      0%,100% { opacity:.4; transform:scale(.88); }
+      50%      { opacity:1;  transform:scale(1.12); }
+    }
+    @keyframes confettiFall {
+      0%   { transform: translateY(-20px) rotate(0deg); opacity:1; }
+      100% { transform: translateY(100vh) rotate(720deg); opacity:0; }
+    }
+    @keyframes winPop {
+      0%   { transform:scale(.8); opacity:0; }
+      60%  { transform:scale(1.08); opacity:1; }
+      100% { transform:scale(1); opacity:1; }
+    }
+    @keyframes shimmer {
+      0%   { background-position: -200% center; }
+      100% { background-position: 200% center; }
+    }
+
+    .confetti-piece {
+      position: fixed;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      animation: confettiFall linear forwards;
+      pointer-events: none;
+      z-index: 9999;
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ── CONSTANTS ──────────────────────────────────────────────────
+const ENERGY = {
+  low:  { emoji:"🌧", label:"Low",  color:"#9B8EC4", bg:"#F0EEF8", max:1, hint:"Maybe just one thing today." },
+  okay: { emoji:"🌿", label:"Okay", color:"#6BAA8E", bg:"#EEF5F0", max:2, hint:"Let's keep it to 2–3." },
+  good: { emoji:"☀️", label:"Good", color:"#E8A84A", bg:"#FDF6E8", max:3, hint:"Choose up to 3 that matter most." },
+};
+
+const PRIORITIES = [
+  { key:"must",    label:"Must do",     color:"#E05C5C", bg:"#FDEAEA" },
+  { key:"should",  label:"Should do",   color:"#E8A84A", bg:"#FDF6E8" },
+  { key:"nice",    label:"Nice to have",color:"#5A8A6E", bg:"#EEF5F1" },
+  { key:"later",   label:"Not urgent",  color:"#9B9B9B", bg:"#F4F4F4" },
+];
+
+const TIMERS = [
+  { label:"5 min",  secs:300,  sub:"Stolen moment" },
+  { label:"10 min", secs:600,  sub:"Solid chunk" },
+  { label:"25 min", secs:1500, sub:"Full block" },
+];
+
+const SOUNDS = [
+  { key:"rain",  label:"🌧 Rain",        url:"https://cdn.pixabay.com/audio/2022/03/10/audio_1e695af41d.mp3" },
+  { key:"ocean", label:"🌊 Ocean",       url:"https://cdn.pixabay.com/audio/2022/03/15/audio_8cb3d2c1c9.mp3" },
+  { key:"white", label:"🤍 White noise", url:"https://cdn.pixabay.com/audio/2024/02/28/audio_0a9a3adefe.mp3" },
+  { key:"brown", label:"🟤 Brown noise", url:"https://cdn.pixabay.com/audio/2023/10/08/audio_cf959dee0f.mp3" },
+  { key:"lofi",  label:"🎵 Lo-fi",       url:"https://cdn.pixabay.com/audio/2024/11/26/audio_f37bf0f0ba.mp3" },
+  { key:"none",  label:"🔇 None",        url:null },
+];
+
+const WINS = ["That counts! 🎉","You did it!","One down.","That's real work.","Well done.","Keep going!","Nice one."];
+const GROUNDS = ["Take one breath.","Feel your feet.","Roll your shoulders.","Unclench your jaw."];
+const OPEN_MSGS = ["You're here. That's already something.","Showing up is the first step.","No rush. You arrived.","Just being here counts."];
+const BREAKDOWN_TIPS = [
+  "Start with the first physical action — not a goal, an action.",
+  "What would you do in the first 5 minutes? Start there.",
+  "If finishing feels heavy, just focus on starting.",
+  "Break it until each step takes less than 15 minutes.",
+  "The smallest step that moves this forward — what is it?",
+];
+
+const WORD_ASSOCIATIONS = [
+  "ocean", "morning", "quiet", "breathe", "yellow", "soft",
+  "today", "begin", "open", "simple", "light", "ready",
+  "focus", "calm", "possible", "one", "here", "now",
+];
+
+const SENTENCE_PROMPTS = [
+  "Right now I feel like...",
+  "One thing I'm looking forward to today is...",
+  "Something small that would help me right now is...",
+  "I feel most like myself when...",
+  "A word that describes how I want to feel today is...",
+  "The best thing that could happen today is...",
+  "Something I'm letting go of right now is...",
+  "One tiny win I could have today is...",
+];
+
+const CONFETTI_COLORS = ["#E05C5C","#C4893A","#5A8A6E","#7B9EA8","#9B7EC8","#E08B6A","#E8845C"];
+
+
+// ── THEMES ────────────────────────────────────────────────────
+const THEMES = {
+  coral:   { name:"Coral Sunrise",  primary:"#E07840", bg:"#FBF7F2", card:"#FFFAF6", border:"#F0E8DF", text:"#2C1810", muted:"#A07868" },
+  teal:    { name:"Ocean Calm",     primary:"#2E8B7A", bg:"#F0F7F5", card:"#FAFEFE", border:"#DFF0EC", text:"#1C2B35", muted:"#5E8A84" },
+  lavender:{ name:"Soft Lavender",  primary:"#7B6EA8", bg:"#F5F3FA", card:"#FDFCFF", border:"#E8E4F0", text:"#2A1F3A", muted:"#9B8EC4" },
+  sage:    { name:"Forest Sage",    primary:"#5A8A6E", bg:"#F2F7F4", card:"#FAFDF8", border:"#DFF0E8", text:"#1C2B22", muted:"#6B9B7A" },
+  rose:    { name:"Dusty Rose",     primary:"#C4607A", bg:"#FAF3F4", card:"#FFF8F9", border:"#F0DDE1", text:"#2B1C1E", muted:"#B08090" },
+  slate:   { name:"Midnight Slate", primary:"#4A6B8A", bg:"#F2F4F7", card:"#F8FAFB", border:"#DDE4EC", text:"#1C2535", muted:"#6B8098" },
+};
+
+const FONT_SIZES = {
+  small:  { base:"14px", title:"clamp(18px,4.5vw,22px)", body:"12px", label:"10px" },
+  medium: { base:"16px", title:"clamp(20px,5vw,24px)",   body:"14px", label:"11px" },
+  large:  { base:"18px", title:"clamp(22px,5.5vw,28px)", body:"16px", label:"13px" },
+};
+
+const PRIORITY_ORDER = { must:0, should:1, nice:2, later:3 };
+
+// ── STORAGE ────────────────────────────────────────────────────
+const SK = "steddi_v3";
+const DK = "steddi_dump_v2";
+const TODAY = new Date().toDateString();
+const sv = d => { try { localStorage.setItem(SK, JSON.stringify({...d, _date: TODAY})); } catch(e){} };
+const ld = () => {
+  try {
+    const raw = localStorage.getItem(SK);
+    if(!raw) return null;
+    const d = JSON.parse(raw);
+    if(d._date !== TODAY) { localStorage.removeItem(SK); return null; }
+    return d;
+  } catch(e){ return null; }
+};
+const cl = () => { try { localStorage.removeItem(SK); } catch(e){} };
+const sdump = items => { try { localStorage.setItem(DK, JSON.stringify(items)); } catch(e){} };
+const ldump = () => { try { const d = localStorage.getItem(DK); return d?JSON.parse(d):[]; } catch(e){return [];} };
+
+// ── SOUND ──────────────────────────────────────────────────────
+let _actx=null,_gainNode=null,_srcNode=null,_curBuf=null,_curUrl=null;
+const _initAudio=()=>{ if(_actx)return; try{_actx=new(window.AudioContext||window.webkitAudioContext)();_gainNode=_actx.createGain();_gainNode.gain.value=0.3;_gainNode.connect(_actx.destination);}catch(e){_actx=null;} };
+const _startSrc=buf=>{ if(!_actx||!_gainNode||!buf)return; try{if(_srcNode){_srcNode.stop();_srcNode.disconnect();_srcNode=null;}}catch(e){} try{const s=_actx.createBufferSource();s.buffer=buf;s.loop=true;s.connect(_gainNode);s.start(0);_srcNode=s;}catch(e){} };
+const playSound=url=>{ _initAudio(); if(!url||!_actx)return; if(_actx.state==="suspended")_actx.resume(); _curUrl=url; fetch(url).then(r=>r.arrayBuffer()).then(ab=>_actx.decodeAudioData(ab)).then(buf=>{_curBuf=buf;_startSrc(buf);}).catch(()=>{}); };
+const stopSound=()=>{ try{if(_srcNode){_srcNode.stop();_srcNode.disconnect();_srcNode=null;}}catch(e){} _curBuf=null;_curUrl=null; };
+const pauseSound=()=>{ try{if(_srcNode){_srcNode.stop();_srcNode.disconnect();_srcNode=null;}}catch(e){} };
+const resumeSound=()=>{ if(_curBuf)_startSrc(_curBuf); else if(_curUrl)playSound(_curUrl); };
+
+// ── CONFETTI ───────────────────────────────────────────────────
+const fireConfetti = () => {
+  const count = 40;
+  for(let i=0;i<count;i++){
+    setTimeout(()=>{
+      const el = document.createElement('div');
+      el.className = 'confetti-piece';
+      el.style.left = Math.random()*100+'vw';
+      el.style.top = '-20px';
+      el.style.background = CONFETTI_COLORS[Math.floor(Math.random()*CONFETTI_COLORS.length)];
+      el.style.width = (8+Math.random()*8)+'px';
+      el.style.height = (8+Math.random()*8)+'px';
+      el.style.animationDuration = (1.5+Math.random()*2)+'s';
+      el.style.animationDelay = '0s';
+      document.body.appendChild(el);
+      setTimeout(()=>el.remove(), 4000);
+    }, i*40);
+  }
+};
+
+// ── NOTIFICATIONS ─────────────────────────────────────────────
+const askNotif = async () => {
+  if(typeof Notification==="undefined") return false;
+  if(Notification.permission==="granted") return true;
+  const r = await Notification.requestPermission();
+  return r==="granted";
+};
+const notify = (title, body, delay=100) => {
+  if(typeof Notification==="undefined"||Notification.permission!=="granted") return;
+  setTimeout(()=>{ try{new Notification(title,{body});}catch(e){} }, delay);
+};
+
+// ── NUMBERED DUMP INPUT ───────────────────────────────────────
+function NumberedDump({ value, onChange, color }) {
+  const lines = value.split("\n");
+  const containerRef = useRef(null);
+  const activeRef = useRef(null);
+
+  // Scroll active line into view
+  useEffect(()=>{
+    if(activeRef.current){
+      activeRef.current.scrollIntoView({ block:"nearest", behavior:"smooth" });
+    }
+  },[lines.length]);
+
+  const handleChange = (i, val) => {
+    const newLines = [...lines];
+    newLines[i] = val;
+    onChange(newLines.join("\n"));
+  };
+
+  const handleKeyDown = (i, e) => {
+    if(e.key === "Enter"){
+      e.preventDefault();
+      const newLines = [...lines];
+      newLines.splice(i+1, 0, "");
+      onChange(newLines.join("\n"));
+      setTimeout(()=>{
+        const inputs = containerRef.current?.querySelectorAll("input");
+        if(inputs && inputs[i+1]) inputs[i+1].focus();
+      }, 30);
+    }
+    if(e.key === "Backspace" && lines[i] === "" && lines.length > 1){
+      e.preventDefault();
+      const newLines = [...lines];
+      newLines.splice(i, 1);
+      onChange(newLines.join("\n"));
+      setTimeout(()=>{
+        const inputs = containerRef.current?.querySelectorAll("input");
+        const target = Math.max(0, i-1);
+        if(inputs && inputs[target]) {
+          inputs[target].focus();
+          // Move cursor to end
+          const len = inputs[target].value.length;
+          inputs[target].setSelectionRange(len, len);
+        }
+      }, 30);
+    }
+  };
+
+  // Ensure at least one line
+  const displayLines = lines.length > 0 ? lines : [""];
+
+  return (
+    <div ref={containerRef} style={{
+      background:"#FFFAF6", border:"1.5px solid #DFF0EC", borderRadius:"16px",
+      overflow:"hidden", marginBottom:"16px",
+      maxHeight:"clamp(180px,40vh,320px)", overflowY:"auto",
+    }}>
+      {displayLines.map((line, i) => (
+        <div key={i} ref={i===displayLines.length-1?activeRef:null} style={{
+          display:"flex", alignItems:"center",
+          borderBottom: i < displayLines.length-1 ? "1px solid #F7F4EF" : "none",
+          padding:"0 14px",
+        }}>
+          {/* Line number */}
+          <span style={{
+            minWidth:"24px", fontSize:"12px", color: line.trim() ? color : "#DDDDDD",
+            fontWeight:"500", userSelect:"none", flexShrink:0,
+            transition:"color 0.2s ease", lineHeight:"1",
+          }}>{i+1}</span>
+          {/* Input */}
+          <input
+            value={line}
+            onChange={e=>handleChange(i, e.target.value)}
+            onKeyDown={e=>handleKeyDown(i, e)}
+            autoFocus={i===0 && displayLines.length===1}
+            placeholder={i===0?"First thought..." : i===1?"And another..." : "Keep going..."}
+            style={{
+              flex:1, border:"none", outline:"none", padding:"13px 8px",
+              fontSize:"15px", fontFamily:"'DM Sans',sans-serif", fontWeight:"300",
+              color:"#2C1810", background:"transparent", WebkitAppearance:"none",
+              lineHeight:"1.4",
+            }}
+          />
+        </div>
+      ))}
+      {/* Add line hint */}
+      <div style={{padding:"8px 14px 10px",display:"flex",alignItems:"center",gap:"8px"}}>
+        <span style={{minWidth:"24px",fontSize:"12px",color:"#EEEEEE"}}>{displayLines.length+1}</span>
+        <span style={{fontSize:"12px",color:"#DDDDDD",fontWeight:"300"}}>Press Enter for a new line</span>
+      </div>
+    </div>
+  );
+}
+
+// ── DOLPHIN SVG COMPANION ─────────────────────────────────────
+function Fox({ mood="idle", size=100 }) {
+  // Named Fox for compatibility but renders a dolphin
+  const bodyAnim = mood==="happy" ? "foxBounce 0.55s ease-in-out infinite" : "none";
+  const tailAnim = mood==="happy" ? "foxWag 0.5s ease-in-out infinite" : "foxWag 3s ease-in-out infinite";
+  const blue1 = "#5B9EC9";
+  const blue2 = "#3A7BA8";
+  const belly = "#D6EEF8";
+  return (
+    <div style={{width:size,height:size,margin:"0 auto",position:"relative",animation:bodyAnim}}>
+      <svg viewBox="0 0 120 120" width={size} height={size}>
+        {/* Tail fluke */}
+        <g style={{transformOrigin:"22px 72px", animation:tailAnim}}>
+          <path d="M22 72 Q8 62 4 52 Q14 58 22 72Z" fill={blue2}/>
+          <path d="M22 72 Q8 82 4 92 Q14 82 22 72Z" fill={blue2}/>
+        </g>
+        {/* Body */}
+        <ellipse cx="68" cy="72" rx="46" ry="22" fill={blue1}/>
+        {/* Belly */}
+        <ellipse cx="72" cy="76" rx="32" ry="13" fill={belly}/>
+        {/* Dorsal fin */}
+        <path d="M65 52 Q72 30 82 38 Q78 52 70 54Z" fill={blue2}/>
+        {/* Pectoral fin */}
+        <path d="M80 78 Q95 88 98 80 Q90 72 80 74Z" fill={blue2} opacity="0.85"/>
+        {/* Head */}
+        <ellipse cx="102" cy="66" rx="18" ry="16" fill={blue1}/>
+        {/* Snout / beak */}
+        <path d="M116 64 Q126 66 116 70 Q112 68 116 64Z" fill={blue1}/>
+        {/* Eye */}
+        <circle cx="110" cy="61" r="4" fill="#1A3D5C"/>
+        <circle cx="111.2" cy="59.8" r="1.4" fill="white"/>
+        {/* Smile */}
+        {mood==="happy"
+          ? <path d="M112 68 Q116 73 120 68" fill="none" stroke="#1A3D5C" strokeWidth="1.8" strokeLinecap="round"/>
+          : <path d="M113 68 Q116 71 119 68" fill="none" stroke="#1A3D5C" strokeWidth="1.4" strokeLinecap="round"/>
+        }
+        {/* Blowhole */}
+        <ellipse cx="100" cy="52" rx="3" ry="2" fill={blue2} opacity="0.7"/>
+        {/* Happy cheek glow */}
+        {mood==="happy" && <>
+          <ellipse cx="107" cy="65" rx="5" ry="3" fill="#A8D8F0" opacity="0.5"/>
+          {/* Splash drops */}
+          <circle cx="98" cy="44" r="2" fill="#A8D8F0" opacity="0.7"/>
+          <circle cx="103" cy="40" r="1.5" fill="#A8D8F0" opacity="0.6"/>
+          <circle cx="94" cy="41" r="1.2" fill="#A8D8F0" opacity="0.5"/>
+        </>}
+        {/* Water line shimmer — idle */}
+        {mood!=="happy" && <ellipse cx="68" cy="90" rx="44" ry="4" fill="#A8D8F0" opacity="0.2"/>}
+      </svg>
+    </div>
+  );
+}
+
+// ── CIRCLE TIMER ───────────────────────────────────────────────
+function CircleTimer({ seconds, total, color, done }) {
+  const r=52, circ=2*Math.PI*r;
+  const offset = circ*(1-seconds/total);
+  const m = String(Math.floor(seconds/60)).padStart(2,"0");
+  const s = String(seconds%60).padStart(2,"0");
+  return (
+    <div style={{position:"relative",width:130,height:130,margin:"0 auto 16px"}}>
+      <svg width="130" height="130" style={{transform:"rotate(-90deg)"}}>
+        <circle cx="65" cy="65" r={r} fill="none" stroke="#F0E8DF" strokeWidth="5"/>
+        <circle cx="65" cy="65" r={r} fill="none" stroke={done?"#E8845C":color} strokeWidth="5"
+          strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
+          style={{transition:"stroke-dashoffset 1s linear"}}/>
+      </svg>
+      <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <span style={{fontFamily:"'Lora',serif",fontSize:"clamp(20px,5vw,26px)",color:done?"#E8845C":"#2C1810",letterSpacing:"-1px"}}>{m}:{s}</span>
+      </div>
+    </div>
+  );
+}
+
+// ── PRIORITY BADGE ─────────────────────────────────────────────
+function PriBadge({ pkey, small }) {
+  const p = PRIORITIES.find(x=>x.key===pkey)||PRIORITIES[3];
+  return (
+    <span style={{fontSize:small?"10px":"11px",padding:small?"2px 7px":"3px 9px",borderRadius:"50px",background:p.bg,color:p.color,fontWeight:"500",whiteSpace:"nowrap"}}>
+      {p.label}
+    </span>
+  );
+}
+
+// ── MAIN APP ───────────────────────────────────────────────────
+function Steddi() {
+  // Entry
+  const [phase, setPhase]       = useState("open");
+  const [openMsg]               = useState(()=>OPEN_MSGS[Math.floor(Math.random()*OPEN_MSGS.length)]);
+  const [showSkip, setShowSkip] = useState(false);
+  const [saved, setSaved]       = useState(null);
+  const [foxMood, setFoxMood]   = useState("idle");
+
+  // Energy
+  const [energy, setEnergy]     = useState(null);
+
+  // Brain dump
+  const [dumpText, setDumpText] = useState("");
+  const [dumpItems, setDumpItems] = useState(()=>ldump()); // persistent { id, text, priority }
+  const [dumpParsed, setDumpParsed] = useState([]); // from session dump
+  const [dumpOpen, setDumpOpen] = useState(false);
+  const [dumpInput, setDumpInput] = useState("");
+
+  // Task selection
+  const [allTasks, setAllTasks]   = useState([]); // full queue { id, text, priority, recur? }
+  const [activeTasks, setActiveTasks] = useState([]); // up to 3 working
+  const [taskInput, setTaskInput] = useState("");
+  const [taskPri, setTaskPri]     = useState("should");
+  const [taskDuration, setTaskDuration] = useState(""); // minutes
+  const [taskRecur, setTaskRecur] = useState(""); // "daily"|"weekdays"|"weekly"|""
+  const [doneTasks, setDoneTasks] = useState([]);
+
+  // Subtasks
+  const [subtasks, setSubtasks]   = useState([]);
+  const [subInput, setSubInput]   = useState("");
+  const [subGroup, setSubGroup]   = useState(null); // {total, current}
+  const [subTip, setSubTip]       = useState("");
+
+  // Defer
+  const [deferDate, setDeferDate] = useState("");
+  const [deferTime, setDeferTime] = useState("");
+  const [deferred, setDeferred]   = useState([]);
+
+  // Timer & sound
+  const [timer, setTimer]         = useState(null);
+  const [secs, setSecs]           = useState(0);
+  const [running, setRunning]     = useState(false);
+  const [timerDone, setTimerDone] = useState(false);
+  const [sound, setSound]         = useState(null);
+  const [soundOn, setSoundOn]     = useState(false);
+  const [notifAsked, setNotifAsked] = useState(false);
+
+  // Break
+  const [breakSecs, setBreakSecs] = useState(0);
+  const [breakRun, setBreakRun]   = useState(false);
+
+  // Mode
+  const [mode, setMode]           = useState(null);
+  const [addMoreInput, setAddMoreInput] = useState("");
+
+  // UI
+  const [fade, setFade]           = useState(true);
+  const [win, setWin]             = useState(null);
+  const [intention, setIntention] = useState(()=>{ try{const d=JSON.parse(localStorage.getItem("steddi_intention")||"{}");return d.date===new Date().toDateString()?d.text:"";}catch(e){return "";} });
+  const [intentionInput, setIntentionInput] = useState("");
+  const [showIntention, setShowIntention] = useState(false);
+  const [streak, setStreak] = useState(()=>{ try{const s=JSON.parse(localStorage.getItem("steddi_streak")||"{}");const td=new Date().toDateString();const yd=new Date(Date.now()-86400000).toDateString();return(s.lastDay===td||s.lastDay===yd)?s.count||1:0;}catch(e){return 0;} });
+  const [editingDumpId, setEditingDumpId] = useState(null);
+  const [editingDumpText, setEditingDumpText] = useState("");
+  const [clearConfirm, setClearConfirm] = useState(false);
+  const [clearDataConfirm, setClearDataConfirm] = useState(false);
+  const [quickCapture, setQuickCapture] = useState(false);
+  const [quickInput, setQuickInput] = useState("");
+  const [priOpen, setPriOpen] = useState(null);
+  const [onboarding, setOnboarding] = useState(()=>{ try{return !localStorage.getItem("steddi_onboarded");}catch(e){return false;} });
+  const [onboardStep, setOnboardStep] = useState(0);
+  const [activeTab, setActiveTab] = useState("focus");
+  const [calMonth, setCalMonth] = useState(()=>{ const d=new Date(); return {y:d.getFullYear(),m:d.getMonth()}; });
+  const [calSelected, setCalSelected] = useState(null);
+  const [theme, setTheme] = useState(()=>{ try{return localStorage.getItem("steddi_theme")||"coral";}catch(e){return "coral";} });
+  const [fontSize, setFontSize] = useState(()=>{ try{return localStorage.getItem("steddi_fontsize")||"medium";}catch(e){return "medium";} });
+
+  // Warmup
+  const [warmupRound, setWarmupRound]   = useState(0); // 0-2
+  const [warmupType, setWarmupType]     = useState("word"); // "word" | "sentence"
+  const [warmupPrompt, setWarmupPrompt] = useState("");
+  const [warmupInput, setWarmupInput]   = useState("");
+  const [warmupDone, setWarmupDone]     = useState(false);
+  const [warmupResponses, setWarmupResponses] = useState([]);
+  const [collabTask, setCollabTask]   = useState(null); // task being invited on
+  const [collabName, setCollabName]   = useState("");
+  const [collabEmail, setCollabEmail] = useState("");
+  const [collabDue, setCollabDue]     = useState("");
+  const [collabTime, setCollabTime]   = useState("");
+  const [collabSent, setCollabSent]   = useState(false);
+  const [userName, setUserName]       = useState(()=>{ try{return localStorage.getItem("steddi_name")||"";}catch(e){return "";} });
+
+  const tickRef  = useRef(null);
+  const breakRef = useRef(null);
+  const entryRef = useRef(null);
+
+  const cfg = energy ? ENERGY[energy] : null;
+  const c   = cfg?.color || "#E8845C";
+  const bg  = cfg?.bg    || "#FDF8F3";
+
+  const currentTask = activeTasks[0] || null;
+  const pri = currentTask ? PRIORITIES.find(p=>p.key===currentTask.priority)||PRIORITIES[1] : null;
+  const focusColor = pri?.color || c;
+
+  // Persist dump
+  useEffect(()=>{ sdump(dumpItems); },[dumpItems]);
+
+  // Session save
+  useEffect(()=>{
+    if(["focus","tasks","select"].includes(phase)) sv({phase,energy,activeTasks,allTasks,doneTasks,deferred,timer});
+    if(phase==="done") cl();
+  },[phase,activeTasks,allTasks,energy]);
+
+  // Entry sequence
+  useEffect(()=>{
+    const s = ld();
+    if(s?.activeTasks?.length&&s?.energy) setSaved(s);
+    setTimeout(()=>setShowSkip(true),1200);
+    entryRef.current = setTimeout(()=>setPhase("ready"),3200);
+    return ()=>clearTimeout(entryRef.current);
+  },[]);
+
+  // Main timer
+  useEffect(()=>{
+    if(running){
+      tickRef.current = setInterval(()=>{
+        setSecs(s=>{
+          if(s<=1){ clearInterval(tickRef.current); setRunning(false); setTimerDone(true); setMode("posttimer"); notify("Steddi","Focus block done. How are you feeling?"); return 0; }
+          return s-1;
+        });
+      },1000);
+    } else clearInterval(tickRef.current);
+    return ()=>clearInterval(tickRef.current);
+  },[running]);
+
+  // Break timer
+  useEffect(()=>{
+    if(breakRun){
+      breakRef.current = setInterval(()=>{
+        setBreakSecs(s=>{
+          if(s<=1){ clearInterval(breakRef.current); setBreakRun(false); setMode(null); setSecs(timer?.secs||1500); setTimerDone(false); return 0; }
+          return s-1;
+        });
+      },1000);
+    } else clearInterval(breakRef.current);
+    return ()=>clearInterval(breakRef.current);
+  },[breakRun]);
+
+  // Sound is triggered directly on user tap (Safari requires this)
+  // No useEffect for sound
+
+  const go = useCallback((next,delay=0)=>{
+    setFade(false);
+    setTimeout(()=>{ setPhase(next); setFade(true); },delay+280);
+  },[]);
+
+  // ── BRAIN DUMP HELPERS ─────────────────────────────────────
+  const parseDump = () => {
+    const lines = dumpText.split(/[\n,]+/).map(l=>l.trim()).filter(Boolean);
+    const parsed = lines.map((text,i)=>({
+      id: Date.now()+i, text,
+      priority: "should", // default, user will adjust
+    }));
+    setDumpParsed(parsed);
+    // Also add to persistent dump
+    setDumpItems(prev=>[...parsed.map(p=>({...p,id:Date.now()+Math.random()})),...prev]);
+    go("dump-review");
+  };
+
+  const updateParsedPri = (id, pri) => {
+    setDumpParsed(prev=>prev.map(i=>i.id===id?{...i,priority:pri}:i));
+  };
+
+  const suggestTasks = () => {
+    const max = cfg?.max || 2;
+    // Sort by priority, pick top items matching energy
+    const sorted = [...dumpParsed].sort((a,b)=>PRIORITY_ORDER[a.priority]-PRIORITY_ORDER[b.priority]);
+    return sorted.slice(0,max);
+  };
+
+  // ── TASK HELPERS ──────────────────────────────────────────
+  const mkId = () => Date.now()+Math.floor(Math.random()*1000);
+
+  const addTask = () => {
+    if(!taskInput.trim()) return;
+    const task = {
+      id:mkId(),
+      text:taskInput.trim(),
+      priority:taskPri,
+      duration:taskDuration||null,
+      recur:taskRecur||null,
+    };
+    if(activeTasks.length<3) setActiveTasks(p=>[...p,task]);
+    else setAllTasks(p=>[...p,task]);
+    setTaskInput(""); setTaskDuration(""); setTaskRecur("");
+  };
+
+  const removeActive = id => setActiveTasks(p=>p.filter(t=>t.id!==id));
+
+  const promoteFromQueue = task => {
+    if(activeTasks.length>=3) return;
+    setAllTasks(p=>p.filter(t=>t.id!==task.id));
+    setActiveTasks(p=>[...p,task]);
+  };
+
+  const promoteFromDump = item => {
+    if(activeTasks.length>=3) return;
+    const task = {id:mkId(), text:item.text, priority:item.priority||"should"};
+    setActiveTasks(p=>[...p,task]);
+    setDumpItems(p=>p.filter(i=>i.id!==item.id));
+    setDumpOpen(false);
+  };
+
+  // ── FOCUS HELPERS ─────────────────────────────────────────
+  const startFocus = async () => {
+    if(!timer||!activeTasks.length) return;
+    _initAudio();
+    if(sound?.url){ playSound(sound.url); setSoundOn(true); }
+    setSecs(timer.secs); setRunning(true); setTimerDone(false); setMode(null);
+    if(!notifAsked){ setNotifAsked(true); askNotif(); }
+    go("focus");
+  };
+
+  const completeTask = () => {
+    const isSubtask = activeTasks[0]?._isSubtask;
+    try{if(navigator.vibrate)navigator.vibrate(isSubtask?[30]:[50,30,50]);}catch(e){}
+    if(!isSubtask) fireConfetti();
+    setFoxMood("happy");
+    const msg = isSubtask
+      ? `Step ${subGroup?.current||1} done. ✓`
+      : WINS[doneTasks.length%WINS.length];
+    setWin({ msg, color: pri?.color||c, bg: pri?.bg||"#EEF5F1" });
+    clearInterval(tickRef.current); setRunning(false);
+    if(!isSubtask){ stopSound(); setSoundOn(false); }
+    setTimeout(()=>{
+      setFoxMood("idle");
+      setWin(null);
+      const completed = activeTasks[0];
+      const rest = activeTasks.slice(1);
+      setDoneTasks(p=>[...p,completed]);
+      // Re-inject recurring task into queue for tomorrow
+      if(completed.recur){
+        const recurCopy = {...completed, id:mkId(), _recurFrom:completed.id};
+        setAllTasks(p=>[...p, recurCopy]);
+      }
+      setActiveTasks(rest);
+      const nextSubIdx = subGroup ? subGroup.current+1 : null;
+      if(subGroup){
+        if(nextSubIdx > subGroup.total){
+          setSubGroup(null); // all subtasks done
+        } else {
+          setSubGroup({...subGroup, current:nextSubIdx});
+        }
+      }
+      setMode(null); setTimerDone(false);
+      if(!rest.length && !allTasks.length){ cl(); go("done"); return; }
+      if(!rest.length && allTasks.length){ setMode("nextup"); return; }
+      // Between subtasks — skip grounding, just reset timer and keep going
+      if(isSubtask && rest[0]?._isSubtask){
+        setSecs(timer?.secs||1500); setRunning(true);
+        if(sound?.url&&soundOn) resumeSound();
+        return;
+      }
+      const g=GROUNDS[Math.floor(Math.random()*GROUNDS.length)];
+      setMode("grounding_"+g); setSecs(timer?.secs||1500);
+    }, isSubtask ? 1200 : 2600);
+  };
+
+  const confirmBreakdown = () => {
+    if(!subtasks.length) return;
+    const cat = activeTasks[0]?.priority||"should";
+    const newTasks = subtasks.map(t=>({id:mkId(),text:t,priority:cat,_isSubtask:true}));
+    setActiveTasks([...newTasks,...activeTasks.slice(1)]);
+    setSubGroup({total:subtasks.length,current:1});
+    setMode(null); setSubtasks([]); setSubInput("");
+    setSecs(timer?.secs||1500); setRunning(true); setTimerDone(false); if(sound?.url&&soundOn)resumeSound();
+  };
+
+  const confirmDefer = () => {
+    if(!deferDate||!activeTasks[0]) return;
+    setDeferred(p=>[...p,{...activeTasks[0],date:deferDate,time:deferTime||null}]);
+    const rest=activeTasks.slice(1);
+    setActiveTasks(rest); setMode(null); setDeferDate(""); setDeferTime("");
+    if(!rest.length&&!allTasks.length){ cl(); go("done"); }
+  };
+
+  const resetApp = () => {
+    cl(); stopSound();
+    setPhase("open"); setEnergy(null); setActiveTasks([]); setAllTasks([]);
+    setDoneTasks([]); setDeferred([]); setDeferDate(""); setTimer(null);
+    setSecs(0); setRunning(false); setTimerDone(false); setMode(null);
+    setSubtasks([]); setSubInput(""); setSubGroup(null); setWin(null);
+    setAddMoreInput(""); setDumpText(""); setDumpParsed([]); setDumpInput("");
+    setDumpOpen(false); setSound(null); setSoundOn(false); setSaved(null);
+    setShowSkip(false); setFoxMood("idle");
+    clearInterval(tickRef.current); clearInterval(breakRef.current);
+    setTimeout(()=>setShowSkip(true),1200);
+    entryRef.current=setTimeout(()=>setPhase("ready"),3200);
+  };
+
+  const updateStreak=()=>{ try{const s=JSON.parse(localStorage.getItem("steddi_streak")||"{}");const td=new Date().toDateString();if(s.lastDay===td)return;const yd=new Date(Date.now()-86400000).toDateString();const n=s.lastDay===yd?(s.count||1)+1:1;localStorage.setItem("steddi_streak",JSON.stringify({lastDay:td,count:n}));setStreak(n);}catch(e){} };
+  const shareApp=()=>{ const msg="I use Steddi to focus — calm, ADHD-friendly, actually works 🐬\n\nTry it: steadily-eight.vercel.app"; if(navigator.share)navigator.share({title:"Steddi",text:msg}).catch(()=>{}); else if(navigator.clipboard)navigator.clipboard.writeText(msg).then(()=>alert("Link copied!")); };
+  const saveTheme = t => { setTheme(t); try{localStorage.setItem("steddi_theme",t);}catch(e){} };
+  const saveFontSize = s => { setFontSize(s); try{localStorage.setItem("steddi_fontsize",s);}catch(e){} };
+  const saveIntention=text=>{setIntention(text);try{localStorage.setItem("steddi_intention",JSON.stringify({date:new Date().toDateString(),text}));}catch(e){}};
+  const openCollab = (task) => {
+    setCollabTask(task);
+    setCollabName(""); setCollabEmail(""); setCollabDue(""); setCollabTime(""); setCollabSent(false);
+    setMode("collab");
+  };
+
+  const sendCollab = () => {
+    if(!collabTask) return;
+    const from = userName || "Someone";
+    const taskName = collabTask.text;
+    const due = collabDue ? new Date(collabDue+"T"+(collabTime||"09:00")).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}) : "";
+    const time = collabTime ? new Date("2000-01-01T"+collabTime).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}) : "";
+    const dueStr = due ? `\nDue: ${due}${time?" at "+time:""}` : "";
+    const greeting = collabName ? `Hey ${collabName}! 👋` : "Hey! 👋";
+    const body = `${greeting}\n\n${from} invited you to:\n\n"${taskName}"${dueStr}\n\nOpened with Steddi 🐬`;
+    const subject = `${from} invited you to "${taskName}"`;
+
+    // Try Web Share API first (native iOS share sheet)
+    if(navigator.share){
+      navigator.share({ title: subject, text: body }).then(()=>setCollabSent(true)).catch(()=>{});
+    } else {
+      // Fallback to mailto
+      const mailto = `mailto:${collabEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.href = mailto;
+      setTimeout(()=>setCollabSent(true), 800);
+    }
+    // Save name for next time
+    try { localStorage.setItem("steddi_name", userName); } catch(e){}
+  };
+
+  const startWarmup = () => {
+    const type = "word";
+    const prompt = WORD_ASSOCIATIONS[Math.floor(Math.random()*WORD_ASSOCIATIONS.length)];
+    setWarmupRound(0); setWarmupType(type); setWarmupPrompt(prompt);
+    setWarmupInput(""); setWarmupDone(false); setWarmupResponses([]);
+    go("warmup");
+  };
+
+  const nextWarmupRound = () => {
+    const resp = warmupInput.trim();
+    if(resp) setWarmupResponses(p=>[...p,{type:warmupType,prompt:warmupPrompt,answer:resp}]);
+    const next = warmupRound + 1;
+    if(next >= 3){ setWarmupDone(true); setWarmupInput(""); return; }
+    // Alternate between word and sentence
+    const nextType = warmupType === "word" ? "sentence" : "word";
+    const nextPrompt = nextType === "word"
+      ? WORD_ASSOCIATIONS[Math.floor(Math.random()*WORD_ASSOCIATIONS.length)]
+      : SENTENCE_PROMPTS[Math.floor(Math.random()*SENTENCE_PROMPTS.length)];
+    setWarmupRound(next); setWarmupType(nextType);
+    setWarmupPrompt(nextPrompt); setWarmupInput("");
+  };
+
+  // ── STYLES ────────────────────────────────────────────────
+  const appStyle = {
+    fontSize: fs.base,
+    minHeight:"100vh", minHeight:"-webkit-fill-available",
+    display:"flex", alignItems:"center", justifyContent:"center",
+    background:bg, transition:"background 0.7s ease",
+    padding:"env(safe-area-inset-top,16px) 20px max(88px,calc(env(safe-area-inset-bottom,0px)+88px))",
+  };
+  const cardStyle = {
+    width:"100%", maxWidth:"min(400px,100%)",
+    opacity:fade?1:0, transform:fade?"translateY(0)":"translateY(12px)",
+    transition:"opacity 0.28s ease, transform 0.28s ease",
+  };
+  const T = { fontFamily:"'Lora',serif", fontSize:"clamp(20px,5vw,24px)", fontWeight:"400", color:"#2C1810", lineHeight:"1.45", marginBottom:"8px" };
+  const SB = { fontSize:"clamp(13px,3.5vw,15px)", fontWeight:"300", color:"#A07868", marginBottom:"24px", lineHeight:"1.6" };
+  const LBL = { fontSize:"10px", letterSpacing:"2px", textTransform:"uppercase", color:"#B09088", fontWeight:"500", marginBottom:"10px", display:"block" };
+  const BTN = col=>({ display:"inline-flex", alignItems:"center", justifyContent:"center", padding:"14px 28px", background:col||c, color:"white", border:"none", borderRadius:"50px", fontSize:"clamp(14px,3.5vw,16px)", fontFamily:"'DM Sans',sans-serif", fontWeight:"500", cursor:"pointer", letterSpacing:"0.2px", minHeight:"48px" });
+  const GH  = col=>({ display:"inline-flex", alignItems:"center", justifyContent:"center", padding:"12px 22px", background:"transparent", color:col||"#BBBBBB", border:`1.5px solid ${col||"#D8EDE8"}`, borderRadius:"50px", fontSize:"clamp(13px,3.5vw,15px)", fontFamily:"'DM Sans',sans-serif", fontWeight:"300", cursor:"pointer", minHeight:"44px" });
+  const INP = { width:"100%", padding:"14px 16px", fontSize:"16px", fontFamily:"'DM Sans',sans-serif", fontWeight:"300", border:"1.5px solid #DFF0EC", borderRadius:"12px", outline:"none", background:"#FFFAF6", color:"#2C1810", boxSizing:"border-box", WebkitAppearance:"none" };
+  const CARD2 = col=>({ padding:"20px", background:"#FFFAF6", borderRadius:"16px", borderLeft:`4px solid ${col||c}`, boxShadow:"0 2px 16px rgba(0,0,0,0.06)", marginBottom:"18px" });
+  const ROW = { display:"flex", gap:"10px", flexWrap:"wrap", alignItems:"center" };
+  const DIVIDER = { height:"1px", background:"#F0E8DF", margin:"18px 0" };
+  const OVERLAY = { position:"fixed", inset:0, display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(8px)", WebkitBackdropFilter:"blur(8px)", zIndex:100, flexDirection:"column", gap:"12px", animation:"pop 0.35s ease forwards" };
+
+  const isGrounding = typeof mode==="string"&&mode.startsWith("grounding_");
+  const groundText  = isGrounding?mode.replace("grounding_",""):"";
+
+  // ── RENDER ────────────────────────────────────────────────
+  return (
+    <div style={appStyle}>
+
+      {/* WIN OVERLAY */}
+      {win&&(
+        <div style={{...OVERLAY, background:`${win.bg}F0`}}>
+          <Fox mood="happy" size={130}/>
+          <div style={{fontFamily:"'Lora',serif",fontSize:"clamp(24px,6vw,30px)",color:win.color,animation:"winPop 0.4s ease forwards",textAlign:"center"}}>{win.msg}</div>
+          <div style={{fontSize:"14px",color:"#A07868",fontWeight:"300"}}>Keep going.</div>
+        </div>
+      )}
+
+      {onboarding&&(<div style={{position:"fixed",inset:0,background:"#FBF7F2",zIndex:999,overflowY:"auto",display:"flex",alignItems:"center",justifyContent:"center",padding:"env(safe-area-inset-top,24px) 24px env(safe-area-inset-bottom,24px)"}}><div style={{width:"100%",maxWidth:"380px"}}>
+        {(()=>{
+          const steps=[
+            { title:"Welcome to Steddi.", desc:"A focus app for the days your brain won't cooperate. Check in, dump your thoughts, pick one thing.",
+              visual:<div style={{background:"white",borderRadius:"16px",padding:"16px",border:"1.5px solid #F0E8DF",marginBottom:"20px",textAlign:"left"}}><div style={{fontSize:"11px",letterSpacing:"2px",color:"#C4A898",marginBottom:"12px",textAlign:"center"}}>HOW'S YOUR ENERGY?</div><div style={{display:"flex",gap:"8px"}}>{[["🌧","Low"],["🌿","Okay"],["☀️","Good"]].map(([e,l],i)=><div key={i} style={{flex:1,padding:"10px 4px",borderRadius:"12px",border:`2px solid ${i===1?"#E07840":"#F0E8DF"}`,textAlign:"center",background:i===1?"#FDF1E8":"white"}}><div style={{fontSize:"22px",marginBottom:"4px"}}>{e}</div><div style={{fontSize:"10px",color:i===1?"#E07840":"#C4A898"}}>{l}</div></div>)}</div></div>
+            },
+            { title:"Empty your head first.", desc:"Brain dump everything — tasks, worries, ideas. No filter. Then pick what matters today.",
+              visual:<div style={{background:"white",borderRadius:"16px",padding:"16px",border:"1.5px solid #F0E8DF",marginBottom:"20px",textAlign:"left"}}><div style={{fontSize:"11px",letterSpacing:"2px",color:"#C4A898",marginBottom:"10px"}}>BRAIN DUMP</div>{["reply to Mark's email","Noah's cleats 👟","prep deck for Friday"].map((t,i)=><div key={i} style={{display:"flex",gap:"8px",alignItems:"center",marginBottom:"6px"}}><span style={{fontSize:"11px",color:"#C4A898",minWidth:"14px"}}>{i+1}</span><div style={{flex:1,background:"#FBF7F2",borderRadius:"8px",padding:"7px 10px",fontSize:"12px",color:"#2C1810"}}>{t}</div></div>)}</div>
+            },
+            { title:"Pick up to 3 for today.", desc:"Your brain works best with limits. The rest wait safely in your Backlog tab.",
+              visual:<div style={{background:"white",borderRadius:"16px",padding:"16px",border:"1.5px solid #F0E8DF",marginBottom:"20px",textAlign:"left"}}><div style={{fontSize:"11px",letterSpacing:"2px",color:"#C4A898",marginBottom:"10px"}}>WORKING ON TODAY</div>{["reply to Mark's email","prep deck for Friday"].map((t,i)=><div key={i} style={{display:"flex",gap:"8px",alignItems:"center",marginBottom:"6px",padding:"8px 10px",borderRadius:"10px",background:"#FFFAF6",border:"1.5px solid #F0E8DF"}}><div style={{width:18,height:18,borderRadius:"50%",background:"#E07840",color:"white",fontSize:"10px",fontWeight:"700",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{i+1}</div><span style={{fontSize:"12px",color:"#2C1810",flex:1}}>{t}</span></div>)}<div style={{fontSize:"11px",color:"#E07840",textAlign:"center",marginTop:"8px",fontWeight:"300"}}>✦ Your brain works best with 3. Trust it.</div></div>
+            },
+            { title:"Your backlog is always here.", desc:"Tap 📥 Backlog anytime to add ideas, see what's waiting, or move things to today.",
+              visual:<div style={{background:"white",borderRadius:"16px",padding:"14px",border:"1.5px solid #F0E8DF",marginBottom:"20px"}}><div style={{display:"flex",borderRadius:"12px",overflow:"hidden",border:"1.5px solid #F0E8DF"}}>{[["🎯","Focus",false],["📥","Backlog",true],["⚙️","Settings",false]].map(([icon,label,active],i)=><div key={i} style={{flex:1,padding:"10px 4px",textAlign:"center",background:active?"#FDF1E8":"white",borderRight:i<2?"1px solid #F0E8DF":"none"}}><div style={{fontSize:"18px",marginBottom:"2px"}}>{icon}</div><div style={{fontSize:"9px",color:active?"#E07840":"#C4A898",fontWeight:active?"600":"300"}}>{label}</div></div>)}</div><div style={{marginTop:"10px",fontSize:"11px",color:"#B0A090",textAlign:"center"}}>The tab bar lives at the bottom of every screen</div></div>
+            },
+          ];
+          const s=steps[onboardStep];
+          return(
+            <div style={{animation:"slideUp 0.45s ease forwards"}}>
+              <div style={{fontFamily:"'Lora',serif",fontSize:"20px",color:"#E07840",letterSpacing:"0.5px",marginBottom:"20px",textAlign:"center"}}>steddi</div>
+              {s.visual}
+              <div style={{fontFamily:"'Lora',serif",fontSize:"clamp(20px,5vw,23px)",color:"#2C1810",marginBottom:"8px",lineHeight:"1.4"}}>{s.title}</div>
+              <div style={{fontSize:"clamp(13px,3.5vw,15px)",color:"#A09888",fontWeight:"300",lineHeight:"1.7",marginBottom:"24px"}}>{s.desc}</div>
+              <div style={{display:"flex",justifyContent:"center",gap:"8px",marginBottom:"24px"}}>{steps.map((_,j)=><div key={j} style={{width:8,height:8,borderRadius:"50%",background:j<=onboardStep?"#E07840":"#F0E8DF",transition:"background 0.3s"}}/>)}</div>
+              <button style={BTN(c)} onClick={()=>{if(onboardStep<steps.length-1){setOnboardStep(x=>x+1);}else{try{localStorage.setItem("steddi_onboarded","1");}catch(e){}setOnboarding(false);}}}>{onboardStep<steps.length-1?"Next →":"Let's go 🐬"}</button>
+              {onboardStep===0&&<button onClick={()=>{try{localStorage.setItem("steddi_onboarded","1");}catch(e){}setOnboarding(false);}} style={{display:"block",margin:"14px auto 0",background:"none",border:"none",fontSize:"13px",color:"#B0A090",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",minHeight:"36px"}}>Skip intro</button>}
+            </div>
+          );
+        })()}
+      </div></div>)}
+
+      <div style={cardStyle}>
+
+        {/* ── OPEN ─────────────────────────────────────────── */}
+        {!onboarding&&phase==="open"&&(
+          <div style={{textAlign:"center",animation:"fadeIn 1s ease forwards"}}>
+            <div style={{fontFamily:"'Lora',serif",fontSize:"22px",color:"#E07840",letterSpacing:"0.5px",marginBottom:"20px"}}>steddi</div>
+            <Fox mood="idle" size={110}/>
+            <div style={{fontFamily:"'Lora',serif",fontSize:"clamp(16px,4vw,18px)",color:"#B09088",fontStyle:"italic",marginTop:"20px",marginBottom:"8px",lineHeight:"1.6"}}>{openMsg}</div>
+            <div style={{fontSize:"12px",color:"#C4A898",fontWeight:"300",letterSpacing:"0.3px"}}>One thing at a time. 🐬</div>
+          </div>
+        )}
+
+        {/* ── READY ────────────────────────────────────────── */}
+        {phase==="ready"&&(
+          <div style={{textAlign:"center",animation:"slideUp 0.5s ease forwards"}}>
+            <div style={{fontFamily:"'Lora',serif",fontSize:"22px",color:"#A07868",letterSpacing:"0.5px",marginBottom:"28px"}}>steddi</div>
+            <Fox mood="idle" size={110}/>
+            <div style={{fontFamily:"'Lora',serif",fontSize:"clamp(18px,4.5vw,21px)",color:"#2C1810",margin:"24px 0 8px"}}>Tap when you're ready.</div>
+            <div style={{fontSize:"13px",color:"#A07868",marginBottom:"32px"}}>No rush.</div>
+            {saved?(
+              <div>
+                <div style={{background:"#FFFAF6",border:"1.5px solid #DFF0EC",borderRadius:"14px",padding:"16px",marginBottom:"16px",textAlign:"left"}}>
+                  <span style={LBL}>You were working on</span>
+                  {saved.activeTasks?.slice(0,2).map((t,i)=>(
+                    <div key={i} style={{fontSize:"14px",color:"#555",fontWeight:"300",marginBottom:"4px",display:"flex",alignItems:"center",gap:"8px"}}>
+                      <span>—</span><span style={{flex:1}}>{t.text}</span><PriBadge pkey={t.priority} small/>
+                    </div>
+                  ))}
+                </div>
+                <div style={ROW}>
+                  <button style={BTN(ENERGY[saved.energy]?.color)} onClick={()=>{ setEnergy(saved.energy); setActiveTasks(saved.activeTasks||[]); setAllTasks(saved.allTasks||[]); if(saved.timer)setTimer(saved.timer); go("focus"); }}>Continue →</button>
+                  <button style={GH()} onClick={()=>{ cl(); setSaved(null); go("checkin"); }}>Start fresh</button>
+                </div>
+              </div>
+            ):(
+              <button style={BTN("#E8845C")} onClick={()=>go("checkin")}>I'm here</button>
+            )}
+          </div>
+        )}
+
+        {/* ── CHECK-IN ─────────────────────────────────────── */}
+        {!onboarding&&phase==="checkin"&&(
+          <div style={{animation:"slideUp 0.4s ease forwards"}}>
+            <button onClick={()=>go("ready")} style={{background:"none",border:"none",fontSize:"13px",color:"#B0A090",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",minHeight:"36px",marginBottom:"8px",display:"flex",alignItems:"center",gap:"4px"}}>← Back</button>
+            <Fox mood="idle" size={100}/>
+            <div style={{...T,marginTop:"20px"}}>{userName?`Hey ${userName.split(" ")[0]}. How's your energy?`:"How's your energy?"}</div>
+            <div style={SB}>Go with your gut — no wrong answer.</div>
+            {intention&&<div style={{padding:"10px 16px",background:c+"12",borderRadius:"12px",fontSize:"13px",color:c,fontStyle:"italic",marginBottom:"12px"}}>✦ {intention}</div>}
+            {!intention&&energy!=="low"&&!showIntention&&<button style={{background:"none",border:"none",fontSize:"12px",color:"#A07868",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",minHeight:"36px",marginBottom:"8px"}} onClick={()=>setShowIntention(true)}>+ Set a daily intention (optional)</button>}
+            {!intention&&energy!=="low"&&showIntention&&<div style={{marginBottom:"12px"}}><input style={{...INP,fontSize:"14px"}} placeholder="What would make today a win?" value={intentionInput} onChange={e=>setIntentionInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&intentionInput.trim()){saveIntention(intentionInput.trim());setShowIntention(false);setIntentionInput("");}}} autoFocus/></div>}
+            <div style={{display:"flex",gap:"10px",marginBottom:"0"}}>
+              {["low","okay","good"].map(lv=>(
+                <button key={lv} onClick={()=>{ setEnergy(lv); go("dump-ask"); }} style={{flex:1,padding:"clamp(16px,4vw,24px) 8px",background:"#FFFAF6",border:"1.5px solid #DFF0EC",borderRadius:"16px",cursor:"pointer",textAlign:"center",fontFamily:"'DM Sans',sans-serif",transition:"all 0.15s ease",minHeight:"80px"}}>
+                  <div style={{fontSize:"clamp(22px,6vw,28px)",marginBottom:"8px"}}>{ENERGY[lv].emoji}</div>
+                  <div style={{fontSize:"clamp(11px,3vw,13px)",color:"#A07868",fontWeight:"300"}}>{ENERGY[lv].label}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── DUMP ASK ─────────────────────────────────────── */}
+        {!onboarding&&phase==="dump-ask"&&cfg&&(
+          <div style={{animation:"slideUp 0.4s ease forwards",textAlign:"center"}}>
+            <Fox mood="idle" size={80}/>
+            <div style={{fontFamily:"'Lora',serif",fontSize:"clamp(20px,5vw,24px)",color:"#2C1810",marginTop:"16px",marginBottom:"6px",lineHeight:"1.4"}}>Let's get it out<br/>of your head.</div>
+            <div style={{...SB,marginBottom:"24px"}}>Empty your mind first — then we'll pick what matters.</div>
+
+            {/* Primary action */}
+            <button style={{...BTN(c),fontSize:"17px",padding:"18px 32px",borderRadius:"50px",boxShadow:`0 4px 20px ${c}40`}} onClick={()=>go("dump")}>
+              Empty my head first
+            </button>
+
+            {/* Just pick for me — only if backlog has items */}
+            {dumpItems.length>0&&(
+              <button style={{...GH(c),marginTop:"16px",fontSize:"14px",padding:"14px 24px"}}
+                onClick={()=>{
+                  const max=cfg?.max||1;
+                  const sorted=[...dumpItems].sort((a,b)=>PRIORITY_ORDER[a.priority]-PRIORITY_ORDER[b.priority]);
+                  const picked=sorted.slice(0,max).map(t=>({id:mkId(),text:t.text,priority:t.priority||"should"}));
+                  setActiveTasks(picked);
+                  go("timer-pick");
+                }}>
+                ✨ Just pick for me ({dumpItems.length} in backlog)
+              </button>
+            )}
+
+            {/* Quiet alternatives */}
+            <div style={{marginTop:"16px",display:"flex",flexDirection:"column",gap:"0px",borderTop:"1px solid #F0E8DF",paddingTop:"16px"}}>
+              <button style={{background:"none",border:"none",fontSize:"14px",color:"#A07868",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",padding:"10px 8px",minHeight:"44px",textAlign:"center"}} onClick={()=>go("tasks")}>
+                I already know what to do →
+              </button>
+              <button style={{background:"none",border:"none",fontSize:"14px",color:"#A07868",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",padding:"10px 8px",minHeight:"44px",textAlign:"center"}} onClick={()=>go("hardday")}>
+                😔 It's a hard day — just help me start →
+              </button>
+              <button style={{background:"none",border:"none",fontSize:"14px",color:"#A07868",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",padding:"10px 8px",minHeight:"44px",textAlign:"center"}} onClick={()=>window.location.href="/reset.html"}>
+                🌊 I need a moment first →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── HARD DAY ─────────────────────────────────────── */}
+        {phase==="hardday"&&(
+          <div style={{animation:"slideUp 0.4s ease forwards",textAlign:"center"}}>
+            <Fox mood="idle" size={110}/>
+            <div style={{fontFamily:"'Lora',serif",fontSize:"clamp(20px,5vw,24px)",color:"#2C1810",margin:"20px 0 10px",lineHeight:"1.4"}}>That's okay.</div>
+            <div style={{...SB,marginBottom:"32px",maxWidth:"280px",margin:"0 auto 32px"}}>Hard days count too. You don't need to do everything. Just one small thing.</div>
+            <div style={{background:"white",border:"1.5px solid #F0E8DF",borderRadius:"16px",padding:"20px",marginBottom:"24px",textAlign:"left"}}>
+              <div style={{fontSize:"13px",color:"#B0A090",marginBottom:"12px",fontWeight:"300"}}>What's one small thing you could do today?</div>
+              <input style={{...INP,fontSize:"15px"}} placeholder="Even something tiny counts..." value={taskInput} onChange={e=>setTaskInput(e.target.value)}
+                onKeyDown={e=>{if(e.key==="Enter"&&taskInput.trim()){setActiveTasks([{id:mkId(),text:taskInput.trim(),priority:"must"}]);setTaskInput("");go("timer-pick");}}}
+                autoFocus/>
+            </div>
+            <button style={{...BTN(c),opacity:taskInput.trim()?1:0.35}}
+              onClick={()=>{if(taskInput.trim()){setActiveTasks([{id:mkId(),text:taskInput.trim(),priority:"must"}]);setTaskInput("");go("timer-pick");}}}>
+              That's enough. Let's start →
+            </button>
+            <button style={{...GH(),marginTop:"12px",fontSize:"13px"}} onClick={()=>go("dump-ask")}>← Back</button>
+          </div>
+        )}
+
+        {/* ── WARMUP ───────────────────────────────────────── */}
+        {phase==="warmup"&&(
+          <div style={{animation:"slideUp 0.4s ease forwards"}}>
+            {!warmupDone ? (
+              <>
+                {/* Progress dots */}
+                <div style={{display:"flex",justifyContent:"center",gap:"8px",marginBottom:"28px"}}>
+                  {[0,1,2].map(i=>(
+                    <div key={i} style={{width:8,height:8,borderRadius:"50%",background:i<=warmupRound?c:"#F0E8DF",transition:"background 0.3s ease"}}/>
+                  ))}
+                </div>
+
+                <Fox mood="idle" size={100}/>
+
+                {warmupType==="word" ? (
+                  <div style={{textAlign:"center",marginTop:"24px"}}>
+                    <div style={{fontSize:"11px",letterSpacing:"2px",textTransform:"uppercase",color:"#B09088",marginBottom:"16px"}}>Word association</div>
+                    <div style={{fontFamily:"'Lora',serif",fontSize:"clamp(28px,7vw,36px)",color:"#2C1810",marginBottom:"8px",letterSpacing:"-0.5px"}}>
+                      {warmupPrompt}
+                    </div>
+                    <div style={{fontSize:"13px",color:"#A07868",marginBottom:"28px"}}>First word that comes to mind.</div>
+                    <input
+                      style={{...INP,textAlign:"center",fontSize:"20px",fontFamily:"'Lora',serif",letterSpacing:"-0.5px",marginBottom:"20px"}}
+                      placeholder="..."
+                      value={warmupInput}
+                      onChange={e=>setWarmupInput(e.target.value)}
+                      onKeyDown={e=>e.key==="Enter"&&warmupInput.trim()&&nextWarmupRound()}
+                      autoFocus
+                    />
+                  </div>
+                ) : (
+                  <div style={{marginTop:"24px"}}>
+                    <div style={{fontSize:"11px",letterSpacing:"2px",textTransform:"uppercase",color:"#B09088",marginBottom:"16px",textAlign:"center"}}>Finish the sentence</div>
+                    <div style={{fontFamily:"'Lora',serif",fontSize:"clamp(18px,4.5vw,22px)",color:"#2C1810",marginBottom:"20px",lineHeight:"1.5",textAlign:"center"}}>
+                      {warmupPrompt}
+                    </div>
+                    <textarea
+                      style={{...INP,height:"100px",resize:"none",lineHeight:"1.6",marginBottom:"20px",fontSize:"15px"}}
+                      placeholder="No right answer..."
+                      value={warmupInput}
+                      onChange={e=>setWarmupInput(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                )}
+
+                <div style={{display:"flex",gap:"10px",justifyContent:"center"}}>
+                  <button
+                    style={{...BTN(c),opacity:warmupInput.trim()?1:0.35}}
+                    onClick={()=>warmupInput.trim()&&nextWarmupRound()}
+                  >
+                    {warmupRound<2?"Next →":"Done →"}
+                  </button>
+                  <button style={GH()} onClick={()=>nextWarmupRound()}>Skip</button>
+                </div>
+              </>
+            ) : (
+              /* Warmup complete */
+              <div style={{textAlign:"center",animation:"slideUp 0.4s ease forwards"}}>
+                <Fox mood="happy" size={120}/>
+                <div style={{fontFamily:"'Lora',serif",fontSize:"clamp(20px,5vw,24px)",color:c,margin:"20px 0 8px"}}>
+                  Your brain is warmed up.
+                </div>
+                <div style={{fontSize:"14px",color:"#A07868",fontWeight:"300",marginBottom:"32px"}}>
+                  3 rounds done. You're more ready than you think.
+                </div>
+                {/* Show their responses gently */}
+                {warmupResponses.length>0&&(
+                  <div style={{textAlign:"left",marginBottom:"28px"}}>
+                    {warmupResponses.map((r,i)=>(
+                      <div key={i} style={{padding:"10px 14px",background:"#FFFAF6",border:"1.5px solid #DFF0EC",borderRadius:"12px",marginBottom:"8px"}}>
+                        <div style={{fontSize:"10px",color:"#B09088",letterSpacing:"1px",textTransform:"uppercase",marginBottom:"4px"}}>{r.type==="word"?r.prompt:""}</div>
+                        <div style={{fontSize:"14px",color:"#555",fontWeight:"300",fontStyle:r.type==="sentence"?"italic":"normal"}}>
+                          {r.type==="sentence"?`"${r.answer}"`:r.answer}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div style={{display:"flex",flexDirection:"column",gap:"12px"}}>
+                  <button style={BTN(c)} onClick={()=>go("dump-ask")}>Ready to look at my tasks →</button>
+                  <button style={{...GH(),fontSize:"13px"}} onClick={startWarmup}>One more round</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── DUMP ─────────────────────────────────────────── */}
+        {phase==="dump"&&(
+          <div style={{animation:"slideUp 0.4s ease forwards"}}>
+            <div style={T}>What's on your mind?</div>
+            <div style={SB}>One thought per line. Everything counts.</div>
+            <NumberedDump value={dumpText} onChange={setDumpText} color={c}/>
+            <div style={ROW}>
+              <button style={{...BTN(c),opacity:dumpText.trim()?1:0.35}} onClick={()=>dumpText.trim()&&parseDump()}>Done dumping →</button>
+              <button style={GH()} onClick={()=>go("dump-ask")}>← Back</button>
+            </div>
+          </div>
+        )}
+
+        {/* ── DUMP REVIEW ──────────────────────────────────── */}
+        {phase==="dump-review"&&(
+          <div style={{animation:"slideUp 0.4s ease forwards"}}>
+            <div style={{fontFamily:"'Lora',serif",fontSize:"clamp(18px,4.5vw,22px)",color:"#2C1810",marginBottom:"6px"}}>That's a lot to carry.</div>
+            <div style={{...SB,marginBottom:"20px"}}>Let's make it lighter. Mark what's urgent — remove anything that doesn't belong today.</div>
+            <div style={{maxHeight:"clamp(200px,45vh,340px)",overflowY:"auto",marginBottom:"20px"}}>
+              {dumpParsed.map(item=>(
+                <div key={item.id} style={{padding:"12px 14px",background:"#FFFAF6",border:"1.5px solid #DFF0EC",borderRadius:"12px",marginBottom:"8px"}}>
+                  {/* Text + edit/delete row */}
+                  <div style={{display:"flex",alignItems:"flex-start",gap:"8px",marginBottom:"10px"}}>
+                    {editingDumpId===item.id?<input autoFocus value={editingDumpText} onChange={e=>setEditingDumpText(e.target.value)} onBlur={()=>{if(editingDumpText.trim())setDumpParsed(p=>p.map(i=>i.id===item.id?{...i,text:editingDumpText.trim()}:i));setEditingDumpId(null);setEditingDumpText("");}} onKeyDown={e=>{if(e.key==="Enter"||e.key==="Escape"){if(e.key==="Enter"&&editingDumpText.trim())setDumpParsed(p=>p.map(i=>i.id===item.id?{...i,text:editingDumpText.trim()}:i));setEditingDumpId(null);setEditingDumpText("");}}} style={{flex:1,fontSize:"14px",color:"#2C1810",fontWeight:"300",border:"none",outline:"none",background:"transparent",fontFamily:"'DM Sans',sans-serif",lineHeight:"1.5",padding:"0"}}/>:<div style={{flex:1,fontSize:"14px",color:"#2C1810",fontWeight:"300",lineHeight:"1.5"}}>{item.text}</div>}
+                    <div style={{display:"flex",gap:"4px",flexShrink:0}}>
+                      {/* Edit */}
+                      <button onClick={()=>{
+                        setEditingDumpId(item.id); setEditingDumpText(item.text);
+                      }} style={{background:"none",border:"none",cursor:"pointer",color:"#B09088",fontSize:"14px",minWidth:"28px",minHeight:"28px",display:"flex",alignItems:"center",justifyContent:"center"}}>✏️</button>
+                      {/* Delete */}
+                      <button onClick={()=>setDumpParsed(prev=>prev.filter(i=>i.id!==item.id))}
+                        style={{background:"none",border:"none",cursor:"pointer",color:"#A07868",fontSize:"16px",minWidth:"28px",minHeight:"28px",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+                    </div>
+                  </div>
+                  {/* Priority — tap to expand picker */}
+                  <div style={{display:"flex",alignItems:"center",gap:"8px",flexWrap:"wrap"}}>
+                    {item.priority&&item.priority!=="should"?(
+                      <button onClick={()=>setPriOpen(priOpen===item.id?null:item.id)}
+                        style={{padding:"3px 10px",borderRadius:"50px",border:`1.5px solid ${PRIORITIES.find(p=>p.key===item.priority)?.color||"#F0E8DF"}`,background:PRIORITIES.find(p=>p.key===item.priority)?.bg||"white",color:PRIORITIES.find(p=>p.key===item.priority)?.color||"#A07868",fontSize:"11px",fontFamily:"'DM Sans',sans-serif",cursor:"pointer"}}>
+                        {PRIORITIES.find(p=>p.key===item.priority)?.label}
+                      </button>
+                    ):(
+                      <span style={{fontSize:"11px",color:"#C4A898",fontWeight:"300"}}>Should do</span>
+                    )}
+                    <button onClick={()=>setPriOpen(priOpen===item.id?null:item.id)}
+                      style={{background:"none",border:"none",fontSize:"11px",color:"#C4A898",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",minHeight:"28px",padding:"0 4px"}}>
+                      {priOpen===item.id?"hide ›":"change ›"}
+                    </button>
+                    {priOpen===item.id&&(
+                      <div style={{display:"flex",gap:"6px",flexWrap:"wrap",width:"100%",marginTop:"4px"}}>
+                        {PRIORITIES.map(p=>(
+                          <button key={p.key} onClick={()=>{updateParsedPri(item.id,p.key);setPriOpen(null);}} style={{padding:"3px 10px",borderRadius:"50px",border:`1.5px solid ${item.priority===p.key?p.color:"#F0E8DF"}`,background:item.priority===p.key?p.bg:"white",color:item.priority===p.key?p.color:"#A07868",fontSize:"11px",fontFamily:"'DM Sans',sans-serif",cursor:"pointer",transition:"all 0.15s ease"}}>
+                            {p.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {dumpParsed.length === 0 && (
+              <div style={{fontSize:"14px",color:"#A07868",textAlign:"center",padding:"20px 0",marginBottom:"16px"}}>
+                All cleared. Add something back or continue.
+              </div>
+            )}
+            <button style={{...BTN(c),opacity:dumpParsed.length>0?1:0.4}} onClick={()=>{ const suggested=suggestTasks(); setActiveTasks(suggested); go("select"); }}>
+              Let's pick what to focus on →
+            </button>
+          </div>
+        )}
+
+        {/* ── SELECT ───────────────────────────────────────── */}
+        {phase==="select"&&cfg&&(
+          <div style={{animation:"slideUp 0.4s ease forwards"}}>
+            <div style={T}>Pick up to {cfg.max} for today.</div>
+            <div style={{...SB,marginBottom:"8px"}}>{cfg.hint}</div>
+            {activeTasks.length>0&&(
+              <div style={{padding:"10px 14px",background:cfg.bg,borderRadius:"10px",fontSize:"12px",color:c,marginBottom:"16px"}}>
+                ✦ Based on your priorities, we suggest these. Swap any you like.
+              </div>
+            )}
+
+            {/* Selected tasks */}
+            <span style={LBL}>Selected {activeTasks.length > 0 ? `(${activeTasks.length}/${cfg.max})` : ""}</span>
+            {activeTasks.length === 0 && (
+              <div style={{fontSize:"13px",color:"#A07868",marginBottom:"12px",fontWeight:"300"}}>Tap a task below to add it.</div>
+            )}
+            {activeTasks.map((t,i)=>(
+              <div key={t.id} style={{...CARD2(PRIORITIES.find(p=>p.key===t.priority)?.color||c),display:"flex",alignItems:"center",gap:"10px",marginBottom:"8px"}}>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:"14px",color:"#2C1810",fontWeight:"300",marginBottom:"4px"}}>{t.text}</div>
+                  <PriBadge pkey={t.priority} small/>
+                </div>
+                <button onClick={()=>removeActive(t.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#B0A090",fontSize:"11px",fontFamily:"'DM Sans',sans-serif",minWidth:"44px",minHeight:"32px"}} title="Remove from today">remove</button>
+              </div>
+            ))}
+
+            {/* All dump items available to pick from */}
+            {dumpParsed.filter(d=>!activeTasks.find(a=>a.id===d.id)).length>0&&(
+              <div style={{marginTop:"16px",marginBottom:"16px"}}>
+                <span style={LBL}>
+                  {activeTasks.length < cfg.max ? "Tap to add →" : "Your other items"}
+                </span>
+                {dumpParsed.filter(d=>!activeTasks.find(a=>a.id===d.id)).map(item=>(
+                  <button key={item.id}
+                    onClick={()=>{ if(activeTasks.length<cfg.max) setActiveTasks(p=>[...p,{...item,id:mkId()}]); }}
+                    style={{display:"flex",alignItems:"center",gap:"10px",width:"100%",padding:"12px 14px",background:"#FFFAF6",border:`1.5px solid ${activeTasks.length<cfg.max?"#F0E8DF":"#F0EEEB"}`,borderRadius:"12px",marginBottom:"8px",cursor:activeTasks.length<cfg.max?"pointer":"default",textAlign:"left",fontFamily:"'DM Sans',sans-serif",opacity:activeTasks.length<cfg.max?1:0.5,transition:"all 0.15s ease"}}>
+                    <span style={{flex:1,fontSize:"14px",color:"#555",fontWeight:"300"}}>{item.text}</span>
+                    <PriBadge pkey={item.priority} small/>
+                    {activeTasks.length<cfg.max && <span style={{color:c,fontSize:"18px",fontWeight:"300",flexShrink:0}}>+</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {activeTasks.length>0&&(
+              <div style={{marginTop:"8px"}}>
+                <button style={BTN(c)} onClick={()=>go("timer-pick")}>Start with these →</button>
+              </div>
+            )}
+            <button style={{...GH(),marginTop:"12px",fontSize:"13px"}} onClick={()=>go("dump-review")}>← Edit my list</button>
+          </div>
+        )}
+
+        {/* ── TASKS ────────────────────────────────────────── */}
+        {phase==="tasks"&&cfg&&(
+          <div style={{animation:"slideUp 0.4s ease forwards"}}>
+            <div style={T}>What needs to happen?</div>
+            <div style={SB}>Add tasks — you'll work 3 at a time.</div>
+
+            {/* Priority picker */}
+            <div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"12px"}}>
+              {PRIORITIES.map(p=>(
+                <button key={p.key} onClick={()=>setTaskPri(p.key)} style={{padding:"5px 11px",borderRadius:"50px",border:`1.5px solid ${taskPri===p.key?p.color:"#F0E8DF"}`,background:taskPri===p.key?p.bg:"white",color:taskPri===p.key?p.color:"#A07868",fontSize:"11px",fontFamily:"'DM Sans',sans-serif",cursor:"pointer",transition:"all 0.15s ease"}}>
+                  {p.label}
+                </button>
+              ))}
+            </div>
+
+            <div style={{display:"flex",gap:"8px",marginBottom:"8px"}}>
+              <input style={{...INP,flex:1}} placeholder="Add a task..." value={taskInput}
+                onChange={e=>setTaskInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addTask()} autoFocus/>
+              <button style={{...GH(c),padding:"0 16px",fontSize:"22px",lineHeight:1,minWidth:"48px"}} onClick={addTask}>+</button>
+            </div>
+
+            {/* Duration + Recurrence — shown when typing */}
+            {taskInput.trim()&&(
+              <div style={{background:"white",border:"1.5px solid #F0E8DF",borderRadius:"12px",padding:"12px 14px",marginBottom:"16px",animation:"slideUp 0.2s ease forwards"}}>
+                <div style={{display:"flex",gap:"10px",marginBottom:"10px"}}>
+                  <div style={{flex:1}}>
+                    <span style={LBL}>Duration (optional)</span>
+                    <select style={{...INP,fontSize:"13px",cursor:"pointer"}} value={taskDuration} onChange={e=>setTaskDuration(e.target.value)}>
+                      <option value="">No time limit</option>
+                      <option value="5">5 min</option>
+                      <option value="10">10 min</option>
+                      <option value="15">15 min</option>
+                      <option value="20">20 min</option>
+                      <option value="25">25 min</option>
+                      <option value="30">30 min</option>
+                      <option value="45">45 min</option>
+                      <option value="60">1 hour</option>
+                    </select>
+                  </div>
+                  <div style={{flex:1}}>
+                    <span style={LBL}>Repeat</span>
+                    <select style={{...INP,fontSize:"13px",cursor:"pointer"}} value={taskRecur} onChange={e=>setTaskRecur(e.target.value)}>
+                      <option value="">No repeat</option>
+                      <option value="daily">Every day</option>
+                      <option value="weekdays">Weekdays only</option>
+                      <option value="weekly">Once a week</option>
+                    </select>
+                  </div>
+                </div>
+                {taskRecur&&taskDuration&&(
+                  <div style={{fontSize:"11px",color:c,fontWeight:"300"}}>
+                    🔁 {taskDuration} min · {taskRecur==="daily"?"Every day":taskRecur==="weekdays"?"Weekdays only":"Once a week"}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Active tasks — 3 visual slots */}
+            <div style={{marginBottom:"16px"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"10px"}}>
+                <span style={LBL}>Today's 3 slots</span>
+                <span style={{fontSize:"11px",color:activeTasks.length===3?c:"#C4A898",fontWeight:"500"}}>{activeTasks.length}/3 filled</span>
+              </div>
+              {[0,1,2].map(i=>{
+                const t = activeTasks[i];
+                return t ? (
+                  <div key={t.id} style={{padding:"12px 14px",background:"#FFFAF6",border:`1.5px solid ${c}40`,borderRadius:"12px",marginBottom:"8px",position:"relative"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:"8px",marginBottom:"8px"}}>
+                      <div style={{width:20,height:20,borderRadius:"50%",background:c,color:"white",fontSize:"11px",fontWeight:"600",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{i+1}</div>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:"14px",color:"#2C1810",fontWeight:"400",marginBottom:"4px"}}>{t.text}</div>
+                        <PriBadge pkey={t.priority} small/>
+                      </div>
+                      <button aria-label="Move to queue" onClick={()=>{ setActiveTasks(p=>p.filter(x=>x.id!==t.id)); setAllTasks(p=>[t,...p]); }} style={{background:"none",border:"none",cursor:"pointer",color:"#A07868",fontSize:"11px",fontFamily:"'DM Sans',sans-serif",minWidth:"36px",minHeight:"32px",padding:"4px"}}>↓ backlog</button>
+                      <button aria-label="Remove" onClick={()=>removeActive(t.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#CCC",fontSize:"16px",minWidth:"28px",minHeight:"28px"}}>×</button>
+                    </div>
+                    <button onClick={()=>openCollab(t)} style={{fontSize:"11px",color:c,background:c+"15",border:"none",borderRadius:"50px",padding:"4px 12px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:"400"}}>
+                      👥 Invite someone
+                    </button>
+                    {t.collab&&<span style={{fontSize:"11px",color:"#A07868",marginLeft:"8px"}}>📨 {t.collab}</span>}
+                  </div>
+                ) : (
+                  <div key={`empty-${i}`} style={{padding:"12px 14px",background:"transparent",border:"1.5px dashed #E8DDD4",borderRadius:"12px",marginBottom:"8px",display:"flex",alignItems:"center",gap:"10px",minHeight:"52px"}}>
+                    <div style={{width:20,height:20,borderRadius:"50%",border:`1.5px dashed #D4C4B8`,color:"#D4C4B8",fontSize:"11px",fontWeight:"600",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{i+1}</div>
+                    <span style={{fontSize:"13px",color:"#D4C4B8",fontWeight:"300",fontStyle:"italic"}}>
+                      {i===0?"Add your first task below...":i===1?"Room for one more...":"One more if you need it..."}
+                    </span>
+                  </div>
+                );
+              })}
+              {activeTasks.length===3&&(
+                <div style={{fontSize:"12px",color:c,textAlign:"center",padding:"6px",fontWeight:"300"}}>
+                  ✦ Your brain works best with 3. Trust it.
+                </div>
+              )}
+            </div>
+
+            {/* Queue */}
+            {allTasks.length>0&&(
+              <div style={{marginBottom:"8px"}}>
+                <span style={LBL}>Up next ({allTasks.length})</span>
+                {allTasks.map((t,qi)=>(
+                  <div key={t.id} style={{padding:"10px 14px",background:"#FFFAF6",border:"1.5px solid #DFF0EC",borderRadius:"12px",marginBottom:"6px",display:"flex",alignItems:"center",gap:"6px"}}>
+                    <div style={{display:"flex",flexDirection:"column",flexShrink:0}}>
+                      <button aria-label="Move up" onClick={()=>{if(qi===0)return;const n=[...allTasks];[n[qi-1],n[qi]]=[n[qi],n[qi-1]];setAllTasks(n);}} style={{background:"none",border:"none",cursor:"pointer",color:qi===0?"#DDD":"#A07868",fontSize:"11px",lineHeight:1,padding:"2px",minWidth:"20px",minHeight:"20px"}}>▲</button>
+                      <button aria-label="Move down" onClick={()=>{if(qi===allTasks.length-1)return;const n=[...allTasks];[n[qi],n[qi+1]]=[n[qi+1],n[qi]];setAllTasks(n);}} style={{background:"none",border:"none",cursor:"pointer",color:qi===allTasks.length-1?"#DDD":"#A07868",fontSize:"11px",lineHeight:1,padding:"2px",minWidth:"20px",minHeight:"20px"}}>▼</button>
+                    </div>
+                    <span style={{flex:1,fontSize:"13px",color:"#555",fontWeight:"300"}}>{t.text}</span>
+                    <PriBadge pkey={t.priority} small/>
+                    {activeTasks.length<3&&<button aria-label="Move to today" onClick={()=>{ setAllTasks(p=>p.filter(x=>x.id!==t.id)); setActiveTasks(p=>[...p,t]); }} style={{background:"none",border:"none",cursor:"pointer",color:c,fontSize:"11px",fontFamily:"'DM Sans',sans-serif",minWidth:"36px",minHeight:"28px",padding:"4px"}} title="Do today">↑ today</button>}
+                    <button aria-label="Remove from queue" onClick={()=>setAllTasks(p=>p.filter(x=>x.id!==t.id))} style={{background:"none",border:"none",cursor:"pointer",color:"#CCC",fontSize:"16px",minWidth:"28px",minHeight:"28px"}}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {activeTasks.length>0&&(
+              <div style={{position:"sticky",bottom:"88px",marginTop:"20px",background:"linear-gradient(to top, #FBF7F2 70%, transparent)",paddingTop:"16px"}}>
+                <button style={BTN(c)} onClick={()=>go("timer-pick")}>I'm done — let's focus →</button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── TIMER PICK ───────────────────────────────────── */}
+        {phase==="timer-pick"&&cfg&&(
+          <div style={{animation:"slideUp 0.4s ease forwards"}}>
+            <Fox mood="idle" size={100}/>
+            <div style={{...T,marginTop:"20px"}}>How long can you give?</div>
+            <div style={SB}>Pick what feels honest right now.</div>
+            <div style={{display:"flex",gap:"8px",marginBottom:"24px"}}>
+              {TIMERS.map(t=>(
+                <button key={t.label} onClick={()=>{setTimer(t);setSecs(t.secs);}} style={{flex:1,padding:"clamp(12px,3vw,16px) 8px",borderRadius:"14px",border:`1.5px solid ${timer?.label===t.label?c:"#F0E8DF"}`,background:timer?.label===t.label?c:"white",color:timer?.label===t.label?"white":"#888",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all 0.15s ease",textAlign:"center",minHeight:"70px"}}>
+                  <div style={{fontSize:"clamp(13px,3.5vw,15px)",fontWeight:"500",marginBottom:"3px"}}>{t.label}</div>
+                  <div style={{fontSize:"11px",opacity:.75,fontWeight:"300"}}>{t.sub}</div>
+                </button>
+              ))}
+            </div>
+
+            <button style={{...BTN(c),opacity:timer?1:0.35}} onClick={startFocus}>Start →</button>
+          </div>
+        )}
+
+        {/* ── FOCUS ────────────────────────────────────────── */}
+        {phase==="focus"&&(activeTasks.length>0||["addmore","nextup"].includes(mode))&&(
+          <div style={{animation:"slideUp 0.4s ease forwards"}}>
+
+            {/* BREAK */}
+            {mode==="break"&&(
+              <div style={{textAlign:"center"}}>
+                <Fox mood="idle" size={110}/>
+                <div style={{fontFamily:"'Lora',serif",fontSize:"clamp(26px,7vw,32px)",color:"#2C1810",margin:"20px 0 6px"}}>
+                  {String(Math.floor(breakSecs/60)).padStart(2,"0")}:{String(breakSecs%60).padStart(2,"0")}
+                </div>
+                <div style={{fontSize:"14px",color:"#B09088",fontWeight:"300",marginBottom:"28px"}}>Step away. Rest.</div>
+                <button style={GH()} onClick={()=>{ clearInterval(breakRef.current); setBreakRun(false); setMode(null); setSecs(timer?.secs||1500); setTimerDone(false); }}>I'm back</button>
+              </div>
+            )}
+
+            {/* INTERRUPTED */}
+            {mode==="interrupted"&&(
+              <div style={{textAlign:"center"}}>
+                <Fox mood="idle" size={110}/>
+                <div style={{fontSize:"14px",color:"#B09088",fontWeight:"300",margin:"20px 0 16px"}}>Someone needed you. That's okay.</div>
+                {currentTask&&<div style={CARD2(focusColor)}><div style={{fontFamily:"'Lora',serif",fontSize:"17px",color:"#2C1810"}}>{currentTask.text}</div></div>}
+                <button style={BTN(focusColor)} onClick={()=>{setMode(null);setRunning(true);if(sound?.url&&soundOn)resumeSound();}}>I'm back →</button>
+              </div>
+            )}
+
+            {/* GROUNDING */}
+            {isGrounding&&(
+              <div style={{textAlign:"center",animation:"slideUp 0.4s ease forwards"}}>
+                <Fox mood="idle" size={110}/>
+                <div style={{fontFamily:"'Lora',serif",fontSize:"clamp(18px,4.5vw,22px)",color:"#2C1810",margin:"24px 0 8px",lineHeight:"1.5"}}>{groundText}</div>
+                <div style={{fontSize:"13px",color:"#A07868",marginBottom:"32px"}}>Take your time.</div>
+                <div style={ROW}>
+                  <button style={BTN(focusColor)} onClick={()=>{setMode(null);setRunning(true);if(sound?.url&&soundOn)resumeSound();}}>Ready →</button>
+                  <button style={GH()} onClick={()=>{ setBreakSecs(2*60); setBreakRun(true); setMode("break"); }}>Need a break</button>
+                </div>
+              </div>
+            )}
+
+            {/* POST TIMER */}
+            {mode==="posttimer"&&(
+              <div style={{textAlign:"center",animation:"slideUp 0.4s ease forwards"}}>
+                <CircleTimer seconds={0} total={timer?.secs||1500} color={focusColor} done/>
+                <Fox mood="idle" size={100}/>
+                <div style={{fontFamily:"'Lora',serif",fontSize:"clamp(18px,4.5vw,20px)",color:"#2C1810",margin:"16px 0 6px"}}>Timer's done.</div>
+                <div style={{fontSize:"14px",color:"#B09088",marginBottom:"24px"}}>How are you feeling?</div>
+                <div style={ROW}>
+                  <button style={BTN(focusColor)} onClick={()=>{setMode(null);setSecs(timer?.secs||1500);setRunning(true);setTimerDone(false);if(sound?.url&&soundOn)resumeSound();}}>Keep going</button>
+                  <button style={GH()} onClick={()=>{setBreakSecs(5*60);setBreakRun(true);setMode("break");}}>Take a break</button>
+                </div>
+              </div>
+            )}
+
+            {/* COLLABORATOR INVITE */}
+            {mode==="collab"&&collabTask&&(
+              <div style={{animation:"slideUp 0.4s ease forwards"}}>
+                {!collabSent ? (
+                  <>
+                    <div style={T}>Invite someone</div>
+                    <div style={{...SB,marginBottom:"20px"}}>They'll get a message about this task.</div>
+
+                    {/* Task preview */}
+                    <div style={{padding:"14px 16px",background:c+"12",borderRadius:"12px",marginBottom:"20px",borderLeft:`3px solid ${c}`}}>
+                      <div style={{fontSize:"13px",color:c,fontWeight:"500",marginBottom:"3px"}}>Task</div>
+                      <div style={{fontSize:"15px",color:"#2C1810",fontFamily:"'Lora',serif"}}>{collabTask.text}</div>
+                    </div>
+
+                    {/* Your name */}
+                    {!userName&&(
+                      <div style={{marginBottom:"14px"}}>
+                        <span style={LBL}>Your name</span>
+                        <input style={{...INP}} placeholder="So they know it's from you..." value={userName}
+                          onChange={e=>setUserName(e.target.value)}/>
+                      </div>
+                    )}
+
+                    {/* Collaborator name */}
+                    <div style={{marginBottom:"14px"}}>
+                      <span style={LBL}>Their name</span>
+                      <input style={{...INP}} placeholder="Noah, Mom, Alex..." value={collabName}
+                        onChange={e=>setCollabName(e.target.value)} autoFocus/>
+                    </div>
+
+                    {/* Due date & time */}
+                    <div style={{display:"flex",gap:"10px",marginBottom:"20px"}}>
+                      <div style={{flex:1}}>
+                        <span style={LBL}>Due date</span>
+                        <input type="date" style={{...INP}} value={collabDue} onChange={e=>setCollabDue(e.target.value)}
+                          min={new Date().toISOString().split("T")[0]}/>
+                      </div>
+                      <div style={{flex:1}}>
+                        <span style={LBL}>Time</span>
+                        <input type="time" style={{...INP}} value={collabTime} onChange={e=>setCollabTime(e.target.value)}/>
+                      </div>
+                    </div>
+
+                    {/* Preview */}
+                    <div style={{padding:"14px 16px",background:"#FFFAF6",border:"1.5px solid #DFF0EC",borderRadius:"12px",marginBottom:"20px"}}>
+                      <div style={{fontSize:"10px",letterSpacing:"2px",textTransform:"uppercase",color:"#B09088",marginBottom:"8px"}}>Message preview</div>
+                      <div style={{fontSize:"13px",color:"#555",fontWeight:"300",lineHeight:"1.7"}}>
+                        Hey {collabName||"there"}! 👋<br/>
+                        <br/>
+                        {userName||"Someone"} invited you to:<br/>
+                        <strong style={{color:"#2C1810"}}>"{collabTask.text}"</strong>
+                        {collabDue&&<><br/>Due: {new Date(collabDue+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}{collabTime&&" at "+new Date("2000-01-01T"+collabTime).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})}</>}
+                        <br/><br/>
+                        Opened with Steddi 🐬
+                      </div>
+                    </div>
+
+                    <div style={{display:"flex",gap:"10px",flexWrap:"wrap"}}>
+                      <button style={BTN(c)} onClick={sendCollab}>Send invite 🐬</button>
+                      <button style={GH()} onClick={()=>setMode(null)}>Cancel</button>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{textAlign:"center",animation:"slideUp 0.4s ease forwards"}}>
+                    <Fox mood="happy" size={110}/>
+                    <div style={{fontFamily:"'Lora',serif",fontSize:"22px",color:c,margin:"20px 0 8px"}}>Invite sent!</div>
+                    <div style={{fontSize:"14px",color:"#A07868",marginBottom:"28px"}}>
+                      {collabName||"They"} knows about this task now.
+                    </div>
+                    <button style={BTN(c)} onClick={()=>{
+                      setActiveTasks(p=>p.map(t=>t.id===collabTask.id?{...t,collab:collabName||"Someone"}:t));
+                      setMode(null); setCollabSent(false);
+                    }}>Back to tasks →</button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* DIDN'T DO IT */}
+            {mode==="didnt"&&(
+              <div style={{animation:"slideUp 0.4s ease forwards"}}>
+                <div style={T}>What's going on?</div>
+                <div style={{display:"flex",flexDirection:"column",gap:"10px",marginBottom:"16px"}}>
+                  {[
+                    {key:"breakdown",label:"It's too much",desc:"Break it into smaller steps"},
+                    {key:"avoidance",label:"I'm avoiding it",desc:"Let's work with that feeling"},
+                    {key:"defer",label:"Not today",desc:"Set it aside for another day"},
+                    {key:"drop",label:"I no longer need this",desc:"Things change. Let it go."},
+                  ].map(opt=>(
+                    <button key={opt.key} style={{padding:"16px",background:"#FFFAF6",border:"1.5px solid #DFF0EC",borderRadius:"12px",cursor:"pointer",textAlign:"left",fontFamily:"'DM Sans',sans-serif"}}
+                      onClick={()=>{
+                        if(opt.key==="breakdown") setSubTip(BREAKDOWN_TIPS[Math.floor(Math.random()*BREAKDOWN_TIPS.length)]);
+                        if(opt.key==="drop"){
+                          const rest=activeTasks.slice(1);
+                          setActiveTasks(rest);
+                          if(!rest.length&&!allTasks.length){ cl(); go("done"); }
+                          else if(!rest.length){ setMode("nextup"); }
+                          else setMode(null);
+                          return;
+                        }
+                        setMode(opt.key);
+                      }}>
+                      <div style={{fontSize:"15px",color:"#2C1810",fontWeight:"400",marginBottom:"3px"}}>{opt.label}</div>
+                      <div style={{fontSize:"12px",color:"#AAA",fontWeight:"300"}}>{opt.desc}</div>
+                    </button>
+                  ))}
+                </div>
+                <button style={GH()} onClick={()=>setMode(null)}>← Back</button>
+              </div>
+            )}
+
+            {/* AVOIDANCE */}
+            {mode==="avoidance"&&(
+              <div style={{animation:"slideUp 0.4s ease forwards"}}>
+                <div style={T}>That's information,<br/>not failure.</div>
+                <div style={{...SB,marginBottom:"16px"}}>Avoidance usually means the task feels too big or too uncertain. That's a signal worth listening to.</div>
+                <div style={{fontFamily:"'Lora',serif",fontSize:"16px",color:"#2C1810",padding:"18px",background:"#FFFAF6",borderRadius:"12px",borderLeft:`3px solid ${focusColor}`,marginBottom:"20px",lineHeight:"1.6"}}>
+                  The only move that works: <strong>the first 2 minutes.</strong> Don't think about finishing it.
+                </div>
+                <div style={ROW}>
+                  <button style={BTN(focusColor)} onClick={()=>{setMode(null);setTimer({label:"2 min",secs:120});setSecs(120);setRunning(true);setTimerDone(false);}}>Start 2 min →</button>
+                  <button style={GH()} onClick={()=>setMode("defer")}>Not today</button>
+                </div>
+              </div>
+            )}
+
+            {/* BREAKDOWN */}
+            {mode==="breakdown"&&(
+              <div style={{animation:"slideUp 0.4s ease forwards"}}>
+                <div style={T}>Break it down.</div>
+                {/* Meaningful tip */}
+                <div style={{padding:"14px 16px",background:focusColor+"15",borderRadius:"12px",marginBottom:"16px",borderLeft:`3px solid ${focusColor}`}}>
+                  <div style={{fontSize:"10px",letterSpacing:"2px",textTransform:"uppercase",color:focusColor,marginBottom:"6px",fontWeight:"500"}}>How to chunk it</div>
+                  <div style={{fontSize:"13px",color:"#555",fontWeight:"300",lineHeight:"1.7"}}>{subTip}</div>
+                  <div style={{marginTop:"8px",fontSize:"12px",color:"#AAA",lineHeight:"1.6"}}>
+                    ✦ Each step: one physical action, 5–15 min max.<br/>
+                    ✦ If it still feels heavy, it's two steps.
+                  </div>
+                </div>
+                <div style={{fontSize:"13px",color:"#AAA",marginBottom:"10px"}}>Break <em style={{color:"#A07868"}}>"{currentTask?.text}"</em> into up to 3 steps:</div>
+                {subtasks.map((s,i)=>(
+                  <div key={i} style={{padding:"12px 14px",background:"#FFFAF6",border:"1.5px solid #DFF0EC",borderRadius:"12px",marginBottom:"8px",display:"flex",alignItems:"center",gap:"8px"}}>
+                    <span style={{color:focusColor,fontSize:"11px",fontWeight:"500",minWidth:"16px"}}>{i+1}</span>
+                    <span style={{flex:1,fontSize:"14px",fontWeight:"300"}}>{s}</span>
+                    <button onClick={()=>setSubtasks(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",cursor:"pointer",color:"#CCC",fontSize:"16px",minWidth:"28px"}}>×</button>
+                  </div>
+                ))}
+                {subtasks.length<3&&(
+                  <div style={{display:"flex",gap:"8px",marginBottom:"16px"}}>
+                    <input style={{...INP,flex:1,fontSize:"14px"}} placeholder={subtasks.length===0?"First small step...":"Next step..."} value={subInput}
+                      onChange={e=>setSubInput(e.target.value)} onKeyDown={e=>{ if(e.key==="Enter"&&subInput.trim()&&subtasks.length<3){setSubtasks(p=>[...p,subInput.trim()]);setSubInput("");} }} autoFocus/>
+                    <button style={{...GH(focusColor),padding:"0 14px",fontSize:"22px",minWidth:"48px"}} onClick={()=>{if(subInput.trim()&&subtasks.length<3){setSubtasks(p=>[...p,subInput.trim()]);setSubInput("");}}}>+</button>
+                  </div>
+                )}
+                {subtasks.length===3&&<div style={{fontSize:"12px",color:"#B09088",marginBottom:"12px"}}>That's enough steps.</div>}
+                <div style={ROW}>
+                  {subtasks.length>0&&<button style={BTN(focusColor)} onClick={confirmBreakdown}>Start step 1 →</button>}
+                  <button style={GH()} onClick={()=>{setMode(null);setSubtasks([]);setSubInput("");}}>Cancel</button>
+                </div>
+              </div>
+            )}
+
+            {/* DEFER */}
+            {mode==="defer"&&(
+              <div style={{animation:"slideUp 0.4s ease forwards"}}>
+                <div style={T}>When should this come back?</div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:"8px",marginBottom:"14px"}}>
+                  {[1,2,3,7].map(n=>{
+                    const d=new Date(); d.setDate(d.getDate()+n);
+                    const val=d.toISOString().split("T")[0];
+                    const lbl2=n===1?"Tomorrow":n===7?"Next week":d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
+                    return <button key={val} onClick={()=>setDeferDate(val)} style={{padding:"10px 16px",borderRadius:"50px",border:`1.5px solid ${deferDate===val?focusColor:"#F0E8DF"}`,background:deferDate===val?focusColor:"white",color:deferDate===val?"white":"#666",fontSize:"13px",fontFamily:"'DM Sans',sans-serif",cursor:"pointer",transition:"all 0.15s ease",minHeight:"40px"}}>{lbl2}</button>;
+                  })}
+                </div>
+                <div style={{display:"flex",gap:"10px",marginBottom:"16px"}}>
+                  <div style={{flex:1}}>
+                    <span style={LBL}>Date</span>
+                    <input type="date" style={INP} value={deferDate} onChange={e=>setDeferDate(e.target.value)} min={new Date(Date.now()+86400000).toISOString().split("T")[0]}/>
+                  </div>
+                  <div style={{flex:1}}>
+                    <span style={LBL}>Time (optional)</span>
+                    <input type="time" style={INP} value={deferTime} onChange={e=>setDeferTime(e.target.value)}/>
+                  </div>
+                </div>
+                {deferDate&&deferTime&&(
+                  <div style={{padding:"10px 14px",background:focusColor+"12",borderRadius:"10px",fontSize:"13px",color:focusColor,marginBottom:"16px"}}>
+                    🔔 Comes back {new Date(deferDate+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})} at {new Date("2000-01-01T"+deferTime).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})}
+                  </div>
+                )}
+                <div style={ROW}>
+                  <button style={{...BTN(focusColor),opacity:deferDate?1:0.35}} onClick={confirmDefer}>Set aside →</button>
+                  <button style={GH()} onClick={()=>{setMode(null);setDeferDate("");setDeferTime("");}}>Cancel</button>
+                </div>
+              </div>
+            )}
+
+            {/* NEXT UP — active tasks done, queue has more */}
+            {mode==="nextup"&&(
+              <div style={{textAlign:"center",animation:"slideUp 0.4s ease forwards"}}>
+                <Fox mood="happy" size={120}/>
+                <div style={{fontFamily:"'Lora',serif",fontSize:"clamp(20px,5vw,24px)",color:c,margin:"20px 0 8px"}}>Nice work.</div>
+                <div style={{fontSize:"14px",color:"#A07868",marginBottom:"24px"}}>You've got {allTasks.length} more in your queue. Keep going?</div>
+                <div style={{maxHeight:"180px",overflowY:"auto",marginBottom:"20px"}}>
+                  {allTasks.slice(0,3).map(t=>(
+                    <button key={t.id} onClick={()=>promoteFromQueue(t)} style={{display:"flex",alignItems:"center",gap:"10px",width:"100%",padding:"12px 14px",background:"#FFFAF6",border:"1.5px solid #DFF0EC",borderRadius:"12px",marginBottom:"8px",cursor:"pointer",textAlign:"left",fontFamily:"'DM Sans',sans-serif"}}>
+                      <span style={{flex:1,fontSize:"14px",color:"#555",fontWeight:"300"}}>{t.text}</span>
+                      <PriBadge pkey={t.priority} small/>
+                      <span style={{color:c,fontSize:"16px"}}>+</span>
+                    </button>
+                  ))}
+                </div>
+                <div style={ROW}>
+                  <button style={BTN(c)} onClick={()=>{if(activeTasks.length>0){setMode(null);setSecs(timer?.secs||1500);setRunning(true);}}} disabled={activeTasks.length===0}>
+                    {activeTasks.length>0?"Start next →":"Pick a task first"}
+                  </button>
+                  <button style={GH()} onClick={()=>{cl();go("done");}}>I'm done for today</button>
+                </div>
+              </div>
+            )}
+
+            {/* ADD MORE */}
+            {mode==="addmore"&&(
+              <div style={{textAlign:"center",animation:"slideUp 0.4s ease forwards"}}>
+                <Fox mood="happy" size={120}/>
+                <div style={{fontFamily:"'Lora',serif",fontSize:"clamp(20px,5vw,24px)",color:c,margin:"20px 0 8px"}}>{energy==="low"?"You did it.":"You're in a good flow."}</div>
+                <div style={{fontSize:"14px",color:"#B09088",marginBottom:"24px"}}>{energy==="low"?"That's enough. You can stop here.":"Want to add one more thing?"}</div>
+                <div style={{display:"flex",gap:"8px",marginBottom:"20px",textAlign:"left"}}>
+                  <input style={{...INP,flex:1,fontSize:"16px"}} placeholder="One more task..." value={addMoreInput}
+                    onChange={e=>setAddMoreInput(e.target.value)}
+                    onKeyDown={e=>{ if(e.key==="Enter"&&addMoreInput.trim()){ setActiveTasks([{id:mkId(),text:addMoreInput.trim(),priority:"should"}]); setAddMoreInput(""); setMode("grounding_"+GROUNDS[Math.floor(Math.random()*GROUNDS.length)]); } }}
+                    autoFocus/>
+                  <button style={{...GH(c),padding:"0 14px",fontSize:"22px",minWidth:"48px"}} onClick={()=>{if(!addMoreInput.trim())return; setActiveTasks([{id:mkId(),text:addMoreInput.trim(),priority:"should"}]); setAddMoreInput(""); setMode("grounding_"+GROUNDS[Math.floor(Math.random()*GROUNDS.length)]); }}>+</button>
+                </div>
+                <button style={GH()} onClick={()=>{cl();go("done");}}>No, I'm done for now</button>
+              </div>
+            )}
+
+            {/* MAIN FOCUS */}
+            {!mode&&!isGrounding&&currentTask&&(
+              <>
+                {/* Body double */}
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"20px"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+                    <div style={{width:7,height:7,borderRadius:"50%",background:focusColor,animation:"pulse 2.5s ease-in-out infinite",flexShrink:0}}/>
+                    <span style={{fontSize:"12px",color:focusColor,fontWeight:"300"}}>You're not doing this alone.</span>
+                  </div>
+                  {sound&&sound.key!=="none"&&(
+                    <button onClick={()=>{
+                      if(soundOn){pauseSound();setSoundOn(false);}
+                      else if(sound?.url){resumeSound()||playSound(sound.url);setSoundOn(true);}
+                    }} style={{background:"none",border:"none",fontSize:"18px",cursor:"pointer",opacity:soundOn?1:0.4,minWidth:"36px",minHeight:"36px"}}>
+                      {soundOn?"🔊":"🔇"}
+                    </button>
+                  )}
+                </div>
+
+                <CircleTimer seconds={secs} total={timer?.secs||1500} color={focusColor} done={timerDone}/>
+
+                <div style={{display:"flex",justifyContent:"center",gap:"10px",marginBottom:"24px"}}>
+                  {!running&&!timerDone&&<button onClick={()=>{setRunning(true);if(sound?.url&&soundOn)resumeSound();else if(sound?.url){playSound(sound.url);setSoundOn(true);}}} style={GH(focusColor)}>{secs===(timer?.secs||1500)?"▶ Start":"▶ Resume"}</button>}
+                  {running&&<button onClick={()=>{setRunning(false);pauseSound();}} style={GH(focusColor)}>⏸ Pause</button>}
+                  {(running||secs<(timer?.secs||1500))&&<button onClick={()=>{setSecs(timer?.secs||1500);setRunning(false);setTimerDone(false);stopSound();setSoundOn(false);}} style={{background:"none",border:"none",fontSize:"12px",color:"#A07868",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",minHeight:"36px"}}>↺</button>}
+                </div>
+
+                {!running&&!timerDone&&secs<(timer?.secs||1500)&&secs>0&&(
+                  <div style={{fontSize:"12px",color:"#A07868",textAlign:"center",marginBottom:"14px"}}>Pick up where you left off.</div>
+                )}
+
+                {/* Task card */}
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"6px"}}>
+                  <span style={LBL}>Right now</span>
+                  {subGroup&&(
+                    <div style={{display:"flex",gap:"4px",alignItems:"center"}}>
+                      {Array.from({length:subGroup.total},(_,i)=>(
+                        <div key={i} style={{width:8,height:8,borderRadius:"50%",background:i<subGroup.current?focusColor:i===subGroup.current-1?focusColor:"#F0E8DF",opacity:i<subGroup.current?0.35:1,transition:"all 0.3s"}}/>
+                      ))}
+                      <span style={{fontSize:"11px",color:focusColor,fontWeight:"500",marginLeft:"4px"}}>Step {subGroup.current} of {subGroup.total}</span>
+                    </div>
+                  )}
+                </div>
+                <div style={{...CARD2(focusColor),position:"relative"}}>
+                  <div style={{fontFamily:"'Lora',serif",fontSize:"clamp(16px,4vw,18px)",color:"#2C1810",lineHeight:"1.55",marginBottom:"8px"}}>{currentTask.text}</div>
+                  <div style={{display:"flex",alignItems:"center",gap:"10px",flexWrap:"wrap"}}>
+                    <PriBadge pkey={currentTask.priority} small/>
+                    {currentTask.duration&&<span style={{fontSize:"11px",color:"#A09888",background:"#F0E8DF",padding:"2px 8px",borderRadius:"50px"}}>⏱ {currentTask.duration}min</span>}
+                    {currentTask.recur&&<span style={{fontSize:"11px",color:c,background:c+"15",padding:"2px 8px",borderRadius:"50px"}}>🔁 {currentTask.recur==="daily"?"Daily":currentTask.recur==="weekdays"?"Weekdays":"Weekly"}</span>}
+                    {currentTask.collab
+                      ? <span style={{fontSize:"11px",color:"#A07868"}}>👥 {currentTask.collab}</span>
+                      : <button onClick={()=>openCollab(currentTask)} style={{fontSize:"11px",color:focusColor,background:focusColor+"15",border:"none",borderRadius:"50px",padding:"3px 10px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>👥 Invite</button>
+                    }
+                  </div>
+                </div>
+
+                <div style={{...ROW,marginBottom:"14px"}}>
+                  <button style={BTN(focusColor)} onClick={completeTask}>Done ✓</button>
+                  <button style={GH()} onClick={()=>setMode("didnt")}>Not yet</button>
+                </div>
+
+                <button onClick={()=>{clearInterval(tickRef.current);setRunning(false);stopSound();setSoundOn(false);setMode("interrupted");}} style={{background:"none",border:"none",fontSize:"12px",color:"#A07868",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"block",marginBottom:"16px",minHeight:"36px"}}>
+                  got interrupted
+                </button>
+
+                {activeTasks.length>1&&(
+                  <div style={{fontSize:"12px",color:"#A07868",cursor:"pointer",minHeight:"36px",display:"flex",alignItems:"center"}} onClick={()=>setMode("later")}>
+                    + {activeTasks.length-1} more later
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* LATER */}
+            {mode==="later"&&(
+              <div>
+                <span style={LBL}>Coming up</span>
+                {activeTasks.slice(1).map((t,i)=>(
+                  <div key={t.id} style={{padding:"12px 14px",background:"#FFFAF6",border:"1.5px solid #DFF0EC",borderRadius:"12px",marginBottom:"8px",opacity:0.6,display:"flex",alignItems:"center",gap:"8px"}}>
+                    <span style={{flex:1,fontSize:"14px",color:"#555",fontWeight:"300"}}>{t.text}</span>
+                    <PriBadge pkey={t.priority} small/>
+                  </div>
+                ))}
+                <button style={{...GH(),marginTop:"8px"}} onClick={()=>setMode(null)}>← Back</button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── DONE ─────────────────────────────────────────── */}
+        {phase==="done"&&(
+          <div style={{textAlign:"center",animation:"slideUp 0.4s ease forwards"}}>
+            <Fox mood="happy" size={130}/>
+            <div style={{fontFamily:"'Lora',serif",fontSize:"clamp(22px,5.5vw,26px)",color:"#2C1810",margin:"20px 0 6px"}}>{energy==="low"?"You showed up.":"That's enough."}</div>
+            <div style={{fontSize:"14px",color:"#B09088",marginBottom:"6px"}}>{energy==="low"?"That takes more than people think.":"You can stop here."}</div>
+            <div style={{fontSize:"13px",color:c,marginBottom:"8px"}}>{doneTasks.length} {doneTasks.length===1?"thing":"things"} done. {energy==="low"?"You did what mattered.":"That's not nothing."}</div>
+            {streak>1&&<div style={{display:"inline-flex",alignItems:"center",gap:"6px",padding:"5px 14px",background:c+"15",borderRadius:"50px",fontSize:"12px",color:c,fontWeight:"500",marginBottom:"20px"}}>🔥 {streak} day streak</div>}
+            {doneTasks.length>0&&(
+              <div style={{textAlign:"left",marginBottom:"24px"}}>
+                <span style={LBL}>What you did</span>
+                {doneTasks.map((t,i)=>(
+                  <div key={i} style={{padding:"10px 14px",background:"#FFFAF6",border:"1.5px solid #DFF0EC",borderRadius:"12px",marginBottom:"6px",display:"flex",alignItems:"center",gap:"8px"}}>
+                    <span style={{color:"#E8845C",fontSize:"14px"}}>✓</span>
+                    <span style={{flex:1,fontSize:"13px",color:"#555",fontWeight:"300"}}>{t.text}</span>
+                    <PriBadge pkey={t.priority} small/>
+                  </div>
+                ))}
+              </div>
+            )}
+            {deferred.length>0&&(
+              <div style={{textAlign:"left",marginBottom:"24px"}}>
+                <span style={LBL}>Set aside</span>
+                {deferred.map((d,i)=>(
+                  <div key={i} style={{padding:"10px 14px",background:"#FFFAF6",border:"1.5px solid #DFF0EC",borderRadius:"12px",marginBottom:"6px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span style={{fontSize:"13px",color:"#A07868",fontWeight:"300"}}>{d.text}</span>
+                    <span style={{fontSize:"11px",color:"#A07868",marginLeft:"10px",whiteSpace:"nowrap"}}>{new Date(d.date+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}{d.time&&` at ${new Date("2000-01-01T"+d.time).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})}`}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{display:"flex",flexDirection:"column",gap:"10px",alignItems:"center"}}><button style={GH()} onClick={()=>{updateStreak();resetApp();}}>Tomorrow →</button><button onClick={shareApp} style={{background:"none",border:"none",fontSize:"13px",color:"#A07868",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",minHeight:"36px"}}>Share Steddi with someone 🐬</button></div>
+          </div>
+        )}
+
+      </div>
+
+      {/* SKIP */}
+      {showSkip&&["open","ready"].includes(phase)&&(
+        <button style={{position:"fixed",bottom:"max(24px,env(safe-area-inset-bottom,24px))",right:"24px",background:"none",border:"none",fontSize:"11px",color:"#A07868",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",animation:"fadeIn 0.5s ease forwards",minHeight:"44px",minWidth:"44px"}}
+          onClick={()=>{clearTimeout(entryRef.current);saved?setPhase("ready"):go("checkin");}}>
+          skip
+        </button>
+      )}
+
+      {/* QUICK CAPTURE — floating during focus */}
+      {phase==="focus"&&!quickCapture&&(
+        <button onClick={()=>setQuickCapture(true)} aria-label="Quick capture"
+          style={{position:"fixed",bottom:"max(80px,calc(env(safe-area-inset-bottom,0px)+80px))",right:"20px",width:"44px",height:"44px",borderRadius:"50%",background:"white",border:`1.5px solid ${focusColor||c}`,boxShadow:"0 2px 12px rgba(0,0,0,0.1)",cursor:"pointer",fontSize:"20px",display:"flex",alignItems:"center",justifyContent:"center",zIndex:90}}>
+          +
+        </button>
+      )}
+      {phase==="focus"&&quickCapture&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.2)",zIndex:200,display:"flex",alignItems:"flex-end"}} onClick={e=>{if(e.target===e.currentTarget){setQuickCapture(false);setQuickInput("");}}}>
+          <div style={{width:"100%",background:"#FBF7F2",borderRadius:"20px 20px 0 0",padding:`20px 20px max(32px,calc(env(safe-area-inset-bottom,0px)+20px))`,animation:"slideUp 0.25s ease forwards"}}>
+            <div style={{fontFamily:"'Lora',serif",fontSize:"17px",color:"#2C1810",marginBottom:"4px"}}>Quick capture</div>
+            <div style={{fontSize:"13px",color:"#B0A090",marginBottom:"14px",fontWeight:"300"}}>Goes to your backlog. Won't interrupt your focus.</div>
+            <div style={{display:"flex",gap:"8px"}}>
+              <input autoFocus style={{...INP,flex:1,fontSize:"16px"}} placeholder="What's on your mind?"
+                value={quickInput} onChange={e=>setQuickInput(e.target.value)}
+                onKeyDown={e=>{if(e.key==="Enter"&&quickInput.trim()){setDumpItems(p=>[{text:quickInput.trim(),id:Date.now(),priority:"should"},...p]);setQuickInput("");setQuickCapture(false);}}}/>
+              <button style={{...BTN(focusColor||c),padding:"0 16px",fontSize:"20px",minWidth:"48px"}}
+                onClick={()=>{if(quickInput.trim()){setDumpItems(p=>[{text:quickInput.trim(),id:Date.now(),priority:"should"},...p]);setQuickInput("");setQuickCapture(false);}}}>+</button>
+            </div>
+            <button style={{background:"none",border:"none",fontSize:"13px",color:"#B0A090",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginTop:"12px",minHeight:"36px"}} onClick={()=>{setQuickCapture(false);setQuickInput("");}}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* DUMP ICON — replaced by tab bar */}
+      {false&&!["open","ready","checkin","dump-ask","dump","dump-review","warmup"].includes(phase)&&!dumpOpen&&(
+        <button onClick={()=>setDumpOpen(true)} style={{position:"fixed",bottom:"max(24px,env(safe-area-inset-bottom,24px))",right:"24px",width:"50px",height:"50px",borderRadius:"50%",background:"#FFFAF6",border:"1.5px solid #DFF0EC",boxShadow:"0 3px 16px rgba(0,0,0,0.1)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"20px",animation:"fadeIn 0.4s ease forwards"}}>
+          📥
+          {dumpItems.length>0&&<div style={{position:"absolute",top:"2px",right:"2px",width:"16px",height:"16px",borderRadius:"50%",background:c,fontSize:"9px",color:"white",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans',sans-serif",fontWeight:"500"}}>{dumpItems.length>9?"9+":dumpItems.length}</div>}
+        </button>
+      )}
+
+      {/* DUMP DRAWER */}
+      {dumpOpen&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.2)",zIndex:200,display:"flex",alignItems:"flex-end",animation:"fadeIn 0.2s ease forwards"}}
+          onClick={e=>{if(e.target===e.currentTarget)setDumpOpen(false);}}>
+          <div style={{width:"100%",maxHeight:"80vh",background:"#FDF8F3",borderRadius:"20px 20px 0 0",padding:"20px 20px max(32px,env(safe-area-inset-bottom,32px))",overflowY:"auto",animation:"slideUp 0.3s ease forwards"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"4px"}}>
+              <div style={{fontFamily:"'Lora',serif",fontSize:"20px",color:"#2C1810"}}>Brain dump</div>
+              <button onClick={()=>setDumpOpen(false)} style={{background:"none",border:"none",fontSize:"22px",color:"#A07868",cursor:"pointer",minWidth:"44px",minHeight:"44px",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+            </div>
+            <div style={{fontSize:"13px",color:"#B09088",marginBottom:"16px"}}>Park anything here. It won't disappear.</div>
+            <div style={{display:"flex",gap:"8px",marginBottom:"16px"}}>
+              <input style={{...INP,flex:1,fontSize:"16px"}} placeholder="What's on your mind?" value={dumpInput}
+                onChange={e=>setDumpInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&dumpInput.trim()){setDumpItems(p=>[{text:dumpInput.trim(),id:Date.now(),priority:"should"},...p]);setDumpInput("");}}} autoFocus/>
+              <button style={{...BTN(c),padding:"0 16px",fontSize:"22px",minWidth:"48px"}} onClick={()=>{if(dumpInput.trim()){setDumpItems(p=>[{text:dumpInput.trim(),id:Date.now(),priority:"should"},...p]);setDumpInput("");}}}>+</button>
+            </div>
+            {dumpItems.length===0&&<div style={{fontSize:"13px",color:"#A07868",textAlign:"center",padding:"20px 0"}}>Nothing here yet. Add anything.</div>}
+            {dumpItems.map(item=>(
+              <div key={item.id} style={{padding:"12px 14px",background:"#FFFAF6",border:"1.5px solid #DFF0EC",borderRadius:"12px",marginBottom:"8px"}}>
+                <div style={{display:"flex",alignItems:"center",gap:"8px",marginBottom:"8px"}}>
+                  <span style={{flex:1,fontSize:"14px",color:"#2C1810",fontWeight:"300"}}>{item.text}</span>
+                  <button onClick={()=>setDumpItems(p=>p.filter(i=>i.id!==item.id))} style={{background:"none",border:"none",cursor:"pointer",color:"#CCC",fontSize:"16px",minWidth:"32px",minHeight:"32px"}}>×</button>
+                </div>
+                <div style={{display:"flex",gap:"6px",flexWrap:"wrap",alignItems:"center"}}>
+                  {PRIORITIES.map(p=>(
+                    <button key={p.key} onClick={()=>setDumpItems(prev=>prev.map(i=>i.id===item.id?{...i,priority:p.key}:i))} style={{padding:"3px 9px",borderRadius:"50px",border:`1.5px solid ${item.priority===p.key?p.color:"#F0E8DF"}`,background:item.priority===p.key?p.bg:"white",color:item.priority===p.key?p.color:"#A07868",fontSize:"10px",fontFamily:"'DM Sans',sans-serif",cursor:"pointer"}}>
+                      {p.label}
+                    </button>
+                  ))}
+                  {["tasks","focus","select"].includes(phase)&&activeTasks.length<3&&(
+                    <button onClick={()=>promoteFromDump(item)} style={{padding:"3px 10px",borderRadius:"50px",background:c+"18",border:"none",color:c,fontSize:"10px",fontFamily:"'DM Sans',sans-serif",cursor:"pointer",fontWeight:"500"}}>do today</button>
+                  )}
+                </div>
+              </div>
+            ))}
+            {dumpItems.length>0&&<button onClick={()=>{if(clearConfirm){setDumpItems([]);setClearConfirm(false);}else{setClearConfirm(true);setTimeout(()=>setClearConfirm(false),3000);}}} style={{background:"none",border:"none",fontSize:"12px",color:"#A07868",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginTop:"12px",minHeight:"36px"}}>{clearConfirm?"Tap again to confirm":"Clear all"}</button>}
+          </div>
+        </div>
+      )}
+
+      {/* BOTTOM NAV */}
+      {!onboarding&&!["open","ready"].includes(phase)&&(
+        <div style={{position:"fixed",bottom:0,left:0,right:0,background:"white",borderTop:"1px solid #F0E8DF",display:"flex",paddingBottom:"max(8px,env(safe-area-inset-bottom,8px))",zIndex:100}}>
+          {[{id:"focus",icon:"🎯",label:"Focus"},{id:"backlog",icon:"📥",label:"Backlog",badge:dumpItems.length},{id:"calendar",icon:"📅",label:"Calendar"},{id:"settings",icon:"⚙️",label:"Settings"}].map(tab=>(
+            <button key={tab.id} onClick={()=>setActiveTab(tab.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"8px 4px",background:"none",border:"none",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",position:"relative",minHeight:"56px"}}>
+              <div style={{fontSize:"22px",marginBottom:"2px",opacity:activeTab===tab.id?1:.4}}>{tab.icon}</div>
+              <div style={{fontSize:"10px",fontWeight:activeTab===tab.id?"500":"300",color:activeTab===tab.id?c:"#B0A090",letterSpacing:"0.3px"}}>{tab.label}</div>
+              {tab.badge>0&&<div style={{position:"absolute",top:"6px",right:"calc(50% - 20px)",width:"16px",height:"16px",borderRadius:"50%",background:c,fontSize:"9px",color:"white",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:"600"}}>{tab.badge>9?"9+":tab.badge}</div>}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* BACKLOG TAB */}
+      {!onboarding&&activeTab==="backlog"&&!["open","ready"].includes(phase)&&(
+        <div style={{position:"fixed",inset:0,background:"#FBF7F2",zIndex:50,display:"flex",flexDirection:"column",paddingTop:"max(20px,env(safe-area-inset-top,20px))",paddingBottom:"max(72px,calc(env(safe-area-inset-bottom,0px)+72px))"}}>
+          <div style={{padding:"0 20px 16px",borderBottom:"1px solid #F0E8DF"}}>
+            <div style={{fontFamily:"'Lora',serif",fontSize:"22px",color:"#2C1810",marginBottom:"4px"}}>Your backlog</div>
+            <div style={{fontSize:"13px",color:"#B0A090",fontWeight:"300"}}>Park anything here. It'll wait until you're ready.</div>
+          </div>
+          <div style={{flex:1,overflowY:"auto",padding:"16px 20px"}}>
+            <div style={{display:"flex",gap:"8px",marginBottom:"16px"}}>
+              <input style={{...INP,flex:1}} placeholder="Add anything on your mind..." value={dumpInput} onChange={e=>setDumpInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&dumpInput.trim()){setDumpItems(p=>[{text:dumpInput.trim(),id:Date.now(),priority:"should"},...p]);setDumpInput("");}}}/>
+              <button style={{...BTN(c),padding:"0 16px",fontSize:"22px",minWidth:"48px"}} onClick={()=>{if(dumpInput.trim()){setDumpItems(p=>[{text:dumpInput.trim(),id:Date.now(),priority:"should"},...p]);setDumpInput("");}}}>+</button>
+            </div>
+            {dumpItems.length===0?(
+              <div style={{textAlign:"center",padding:"40px 20px"}}>
+                <div style={{fontSize:"40px",marginBottom:"12px"}}>📥</div>
+                <div style={{fontFamily:"'Lora',serif",fontSize:"17px",color:"#2C1810",marginBottom:"8px"}}>Nothing here yet.</div>
+                <div style={{fontSize:"13px",color:"#B0A090",fontWeight:"300",lineHeight:"1.6"}}>Add tasks, ideas, worries — anything. They'll wait until you're ready.</div>
+              </div>
+            ):(
+              <>
+                {dumpItems.map(item=>(
+                  <div key={item.id} style={{padding:"12px 14px",background:"white",border:"1.5px solid #F0E8DF",borderRadius:"12px",marginBottom:"8px"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:"8px",marginBottom:"8px"}}>
+                      <span style={{flex:1,fontSize:"14px",color:"#2C1810",fontWeight:"300"}}>{item.text}</span>
+                      {activeTasks.length<3&&<button onClick={()=>{setDumpItems(p=>p.filter(i=>i.id!==item.id));setActiveTasks(p=>[...p,{id:Date.now(),text:item.text,priority:item.priority||"should"}]);setActiveTab("focus");}} style={{padding:"4px 10px",borderRadius:"50px",background:c+"18",border:"none",color:c,fontSize:"11px",fontFamily:"'DM Sans',sans-serif",cursor:"pointer",fontWeight:"500",whiteSpace:"nowrap"}}>+ today</button>}
+                      <button onClick={()=>setDumpItems(p=>p.filter(i=>i.id!==item.id))} style={{background:"none",border:"none",cursor:"pointer",color:"#CCC",fontSize:"16px",minWidth:"32px",minHeight:"32px"}}>×</button>
+                    </div>
+                    <div style={{display:"flex",gap:"6px",flexWrap:"wrap"}}>
+                      {PRIORITIES.map(p=>(<button key={p.key} onClick={()=>setDumpItems(prev=>prev.map(i=>i.id===item.id?{...i,priority:p.key}:i))} style={{padding:"3px 9px",borderRadius:"50px",border:`1.5px solid ${item.priority===p.key?p.color:"#F0E8DF"}`,background:item.priority===p.key?p.bg:"white",color:item.priority===p.key?p.color:"#B0A090",fontSize:"10px",fontFamily:"'DM Sans',sans-serif",cursor:"pointer"}}>{p.label}</button>))}
+                    </div>
+                  </div>
+                ))}
+                <button onClick={()=>{if(clearConfirm){setDumpItems([]);setClearConfirm(false);}else{setClearConfirm(true);setTimeout(()=>setClearConfirm(false),3000);}}} style={{background:"none",border:"none",fontSize:"12px",color:"#B0A090",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginTop:"4px",minHeight:"36px"}}>{clearConfirm?"Tap again to confirm":"Clear all"}</button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* SETTINGS TAB */}
+      {/* CALENDAR TAB */}
+      {!onboarding&&activeTab==="calendar"&&!["open","ready"].includes(phase)&&(()=>{
+        // Build task map: date string → [{text, type, duration, recur, color}]
+        const taskMap = {};
+        const addToMap = (dateStr, task, type) => {
+          if(!dateStr) return;
+          if(!taskMap[dateStr]) taskMap[dateStr]=[];
+          taskMap[dateStr].push({...task, type});
+        };
+
+        // Deferred tasks
+        deferred.forEach(t => addToMap(t.date, t, "deferred"));
+
+        // Recurring tasks — project 60 days forward
+        const today = new Date(); today.setHours(0,0,0,0);
+        [...activeTasks,...allTasks].filter(t=>t.recur).forEach(t=>{
+          for(let i=0;i<60;i++){
+            const d = new Date(today); d.setDate(d.getDate()+i);
+            const dow = d.getDay();
+            const ds = d.toISOString().split("T")[0];
+            if(t.recur==="daily") addToMap(ds,t,"recur");
+            else if(t.recur==="weekdays"&&dow>=1&&dow<=5) addToMap(ds,t,"recur");
+            else if(t.recur==="weekly"&&dow===today.getDay()) addToMap(ds,t,"recur");
+          }
+        });
+
+        // Calendar grid
+        const {y,m} = calMonth;
+        const firstDay = new Date(y,m,1).getDay();
+        const daysInMonth = new Date(y,m+1,0).getDate();
+        const todayStr = today.toISOString().split("T")[0];
+        const monthName = new Date(y,m,1).toLocaleDateString("en-US",{month:"long",year:"numeric"});
+
+        // Selected day tasks
+        const selTasks = calSelected ? (taskMap[calSelected]||[]) : [];
+
+        return(
+          <div style={{position:"fixed",inset:0,background:th.bg,zIndex:50,display:"flex",flexDirection:"column",paddingTop:"max(20px,env(safe-area-inset-top,20px))",paddingBottom:"max(72px,calc(env(safe-area-inset-bottom,0px)+72px))"}}>
+            {/* Header */}
+            <div style={{padding:"0 20px 12px",borderBottom:`1px solid ${th.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <button onClick={()=>setCalMonth(({y,m})=>m===0?{y:y-1,m:11}:{y,m:m-1})} style={{background:"none",border:"none",fontSize:"20px",cursor:"pointer",color:th.muted,minWidth:"36px",minHeight:"36px"}}>‹</button>
+              <div style={{fontFamily:"'Lora',serif",fontSize:"18px",color:th.text}}>{monthName}</div>
+              <button onClick={()=>setCalMonth(({y,m})=>m===11?{y:y+1,m:0}:{y,m:m+1})} style={{background:"none",border:"none",fontSize:"20px",cursor:"pointer",color:th.muted,minWidth:"36px",minHeight:"36px"}}>›</button>
+            </div>
+
+            <div style={{flex:1,overflowY:"auto",padding:"12px 16px"}}>
+              {/* Day labels */}
+              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:"4px"}}>
+                {["Su","Mo","Tu","We","Th","Fr","Sa"].map(d=>(
+                  <div key={d} style={{textAlign:"center",fontSize:"11px",color:th.muted,fontWeight:"500",padding:"4px 0"}}>{d}</div>
+                ))}
+              </div>
+
+              {/* Calendar grid */}
+              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:"2px",marginBottom:"16px"}}>
+                {Array.from({length:firstDay},(_,i)=><div key={"e"+i}/>)}
+                {Array.from({length:daysInMonth},(_,i)=>{
+                  const day=i+1;
+                  const ds=`${y}-${String(m+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+                  const tasks=taskMap[ds]||[];
+                  const isToday=ds===todayStr;
+                  const isSel=ds===calSelected;
+                  const hasDeferred=tasks.some(t=>t.type==="deferred");
+                  const hasRecur=tasks.some(t=>t.type==="recur");
+                  return(
+                    <button key={ds} onClick={()=>setCalSelected(isSel?null:ds)}
+                      style={{aspectRatio:"1",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",borderRadius:"10px",border:"none",cursor:"pointer",background:isSel?th.primary:isToday?th.primary+"18":"transparent",color:isSel?"white":isToday?th.primary:th.text,fontFamily:"'DM Sans',sans-serif",fontSize:fs.body,fontWeight:isToday||isSel?"600":"300",position:"relative",padding:"4px"}}>
+                      {day}
+                      {tasks.length>0&&(
+                        <div style={{display:"flex",gap:"2px",marginTop:"2px"}}>
+                          {hasDeferred&&<div style={{width:5,height:5,borderRadius:"50%",background:isSel?"white":th.primary}}/>}
+                          {hasRecur&&<div style={{width:5,height:5,borderRadius:"50%",background:isSel?"white":"#5BAD7F"}}/>}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Selected day detail */}
+              {calSelected&&(
+                <div style={{animation:"slideUp 0.2s ease forwards"}}>
+                  <div style={{fontFamily:"'Lora',serif",fontSize:"16px",color:th.text,marginBottom:"10px"}}>
+                    {new Date(calSelected+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}
+                  </div>
+                  {selTasks.length===0?(
+                    <div style={{fontSize:"13px",color:th.muted,fontStyle:"italic"}}>Nothing scheduled.</div>
+                  ):selTasks.map((t,i)=>(
+                    <div key={i} style={{padding:"12px 14px",background:"white",border:`1.5px solid ${th.border}`,borderRadius:"12px",marginBottom:"8px",display:"flex",alignItems:"flex-start",gap:"10px"}}>
+                      <div style={{fontSize:"16px",flexShrink:0}}>{t.type==="recur"?"🔁":"📌"}</div>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:fs.body,color:th.text,fontWeight:"400",marginBottom:"4px"}}>{t.text}</div>
+                        <div style={{display:"flex",gap:"6px",flexWrap:"wrap"}}>
+                          {t.time&&<span style={{fontSize:"11px",color:th.muted}}>⏰ {new Date("2000-01-01T"+t.time).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})}</span>}
+                          {t.duration&&<span style={{fontSize:"11px",color:th.muted}}>⏱ {t.duration}min</span>}
+                          {t.recur&&<span style={{fontSize:"11px",color:"#5BAD7F"}}>{t.recur==="daily"?"Daily":t.recur==="weekdays"?"Weekdays":"Weekly"}</span>}
+                          <span style={{fontSize:"11px",padding:"1px 7px",borderRadius:"50px",background:PRIORITIES.find(p=>p.key===t.priority)?.bg||"#F0E8DF",color:PRIORITIES.find(p=>p.key===t.priority)?.color||th.muted}}>{PRIORITIES.find(p=>p.key===t.priority)?.label||"Should do"}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!calSelected&&(
+                <div style={{textAlign:"center",padding:"20px 0"}}>
+                  <div style={{fontSize:"28px",marginBottom:"8px"}}>📅</div>
+                  <div style={{fontSize:"13px",color:th.muted,fontWeight:"300"}}>Tap any day to see what's scheduled.</div>
+                  <div style={{fontSize:"11px",color:th.muted,marginTop:"6px"}}>🔵 Deferred tasks · 🟢 Recurring tasks</div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* SETTINGS TAB */}
+      {!onboarding&&activeTab==="settings"&&!["open","ready"].includes(phase)&&(
+        <div style={{position:"fixed",inset:0,background:"#FBF7F2",zIndex:50,display:"flex",flexDirection:"column",paddingTop:"max(20px,env(safe-area-inset-top,20px))",paddingBottom:"max(72px,calc(env(safe-area-inset-bottom,0px)+72px))"}}>
+          <div style={{padding:"0 20px 16px",borderBottom:"1px solid #F0E8DF"}}>
+            <div style={{fontFamily:"'Lora',serif",fontSize:"22px",color:"#2C1810"}}>Settings</div>
+          </div>
+          <div style={{flex:1,overflowY:"auto",padding:"20px"}}>
+            <div style={{marginBottom:"24px"}}>
+              <span style={LBL}>Your name</span>
+              <input style={INP} placeholder="So Steddi can greet you..." value={userName} onChange={e=>{setUserName(e.target.value);try{localStorage.setItem("steddi_name",e.target.value);}catch(err){}}}/>
+            </div>
+
+            {/* Theme picker */}
+            <div style={{marginBottom:"24px"}}>
+              <span style={LBL}>Theme</span>
+              <div style={{display:"flex",flexWrap:"wrap",gap:"8px",marginTop:"8px"}}>
+                {Object.entries(THEMES).map(([key,t])=>(
+                  <button key={key} onClick={()=>saveTheme(key)}
+                    style={{display:"flex",alignItems:"center",gap:"8px",padding:"10px 14px",borderRadius:"12px",border:`2px solid ${theme===key?t.primary:"#F0E8DF"}`,background:theme===key?t.primary+"15":"white",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"13px",color:theme===key?t.primary:"#A09888",minHeight:"44px",transition:"all 0.15s"}}>
+                    <div style={{width:16,height:16,borderRadius:"50%",background:t.primary,flexShrink:0}}/>
+                    {t.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Font size picker */}
+            <div style={{marginBottom:"24px"}}>
+              <span style={LBL}>Text size</span>
+              <div style={{display:"flex",gap:"8px",marginTop:"8px"}}>
+                {[["small","A","Small"],["medium","A","Medium"],["large","A","Large"]].map(([key,_,label],i)=>(
+                  <button key={key} onClick={()=>saveFontSize(key)}
+                    style={{flex:1,padding:"12px 8px",borderRadius:"12px",border:`2px solid ${fontSize===key?th.primary:"#F0E8DF"}`,background:fontSize===key?th.primary+"15":"white",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",color:fontSize===key?th.primary:"#A09888",fontSize:[13,16,20][i],fontWeight:"500",minHeight:"52px",transition:"all 0.15s"}}>
+                    A<br/><span style={{fontSize:"10px",fontWeight:"300"}}>{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            {streak>0&&<div style={{padding:"14px 16px",background:"white",border:"1.5px solid #F0E8DF",borderRadius:"14px",marginBottom:"16px",display:"flex",alignItems:"center",gap:"12px"}}><span style={{fontSize:"24px"}}>🔥</span><div><div style={{fontSize:"15px",color:"#2C1810",fontWeight:"500"}}>{streak} day streak</div><div style={{fontSize:"12px",color:"#B0A090",fontWeight:"300"}}>Keep showing up.</div></div></div>}
+            <button onClick={()=>{try{localStorage.removeItem("steddi_onboarded");}catch(e){}setOnboarding(true);setOnboardStep(0);setActiveTab("focus");}} style={{width:"100%",padding:"14px 16px",background:"white",border:"1.5px solid #F0E8DF",borderRadius:"14px",fontSize:"14px",color:"#2C1810",fontFamily:"'DM Sans',sans-serif",cursor:"pointer",textAlign:"left",marginBottom:"10px"}}>👋 Restart intro tour</button>
+            <button onClick={()=>{if(clearDataConfirm){try{localStorage.clear();}catch(e){}setDumpItems([]);setActiveTasks([]);setAllTasks([]);setDoneTasks([]);setDeferred([]);setClearDataConfirm(false);setActiveTab("focus");resetApp();}else{setClearDataConfirm(true);setTimeout(()=>setClearDataConfirm(false),3000);}}} style={{width:"100%",padding:"14px 16px",background:"white",border:"1.5px solid #F0E8DF",borderRadius:"14px",fontSize:"14px",color:"#C04040",fontFamily:"'DM Sans',sans-serif",cursor:"pointer",textAlign:"left",marginBottom:"10px"}}>{clearDataConfirm?"Tap again — this clears everything":"🗑 Clear all data"}</button>
+            <div style={{fontSize:"11px",color:"#C4A898",textAlign:"center",marginTop:"24px"}}>Steddi · One thing at a time 🐬</div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+document.addEventListener('touchstart',_initAudio,{once:true,passive:true});
+
+// Register Service Worker for offline + PWA install
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  });
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<Steddi/>);
+</script>
+</body>
+</html>
