@@ -1,0 +1,9 @@
+{
+  "rewrites": [
+    { "source": "/reset.html", "destination": "/reset.html" },
+    { "source": "/sw.js", "destination": "/sw.js" },
+    { "source": "/manifest.json", "destination": "/manifest.json" },
+    { "source": "/(icon-.*\\.png)", "destination": "/$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

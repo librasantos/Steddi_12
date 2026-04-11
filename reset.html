@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+  <title>Reset — Steddi</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=Lora:ital,wght@0,400;1,400&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    html { height:100%; }
+    body {
+      min-height:100%; font-family:'DM Sans',sans-serif;
+      background:#F0F7F5; color:#1C2B35;
+      display:flex; align-items:center; justify-content:center;
+      padding:env(safe-area-inset-top,20px) 24px env(safe-area-inset-bottom,24px);
+      -webkit-font-smoothing:antialiased;
+    }
+
+    @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
+    @keyframes slideUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes breatheIn  { from{transform:scale(.7);opacity:.4} to{transform:scale(1.18);opacity:1} }
+    @keyframes breatheOut { from{transform:scale(1.18);opacity:1} to{transform:scale(.7);opacity:.35} }
+    @keyframes hold       { from{transform:scale(1.18);opacity:1} to{transform:scale(1.18);opacity:.85} }
+    @keyframes pulse { 0%,100%{opacity:.35;transform:scale(.88)} 50%{opacity:.8;transform:scale(1.1)} }
+    @keyframes gentleFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+
+    .screen {
+      width:100%; max-width:360px;
+      display:none; flex-direction:column; align-items:center;
+      text-align:center; animation:slideUp .45s ease forwards;
+    }
+    .screen.active { display:flex; }
+
+    /* ── SHARED ── */
+    .dolphin { font-size:48px; margin-bottom:20px; animation:gentleFloat 3s ease-in-out infinite; }
+    .s-title { font-family:'Lora',serif; font-size:clamp(22px,5.5vw,26px); color:#1C2B35; line-height:1.4; margin-bottom:8px; }
+    .s-sub   { font-size:clamp(13px,3.5vw,15px); color:#7A9E9A; font-weight:300; line-height:1.65; margin-bottom:32px; max-width:280px; }
+    .btn-primary {
+      padding:15px 36px; background:#2E8B7A; color:white; border:none;
+      border-radius:50px; font-size:15px; font-family:'DM Sans',sans-serif;
+      font-weight:500; cursor:pointer; letter-spacing:.2px;
+      transition:transform .1s, opacity .2s; min-height:50px;
+    }
+    .btn-primary:active { transform:scale(.97); }
+    .btn-back {
+      background:none; border:none; color:#5E8A84; font-size:13px;
+      font-family:'DM Sans',sans-serif; cursor:pointer; margin-top:16px;
+      padding:8px; min-height:44px; min-width:44px;
+    }
+
+    /* ── INTRO ── */
+    #intro .cards {
+      display:flex; flex-direction:column; gap:10px;
+      width:100%; margin-bottom:0;
+    }
+    .mode-card {
+      padding:18px 20px; border-radius:18px; cursor:pointer;
+      text-align:left; transition:transform .12s;
+      border:1.5px solid transparent;
+    }
+    .mode-card:active { transform:scale(.97); }
+    button:focus-visible, input:focus-visible { outline: 2px solid #2E8B7A !important; outline-offset: 2px !important; }
+    .mode-card .mc-em  { font-size:20px; margin-bottom:6px; }
+    .mode-card .mc-t   { font-size:15px; font-weight:500; margin-bottom:3px; }
+    .mode-card .mc-d   { font-size:12px; opacity:.65; line-height:1.5; }
+    .mc-paralysis { background:rgba(46,139,122,.1); border-color:rgba(46,139,122,.2); color:#2E8B7A; }
+    .mc-paralysis .mc-t { color:#1C6B5E; }
+    .mc-curious   { background:rgba(155,126,200,.1); border-color:rgba(155,126,200,.2); color:#7B6EA8; }
+    .mc-curious .mc-t   { color:#5A4E88; }
+    .mc-tired     { background:rgba(74,155,135,.1); border-color:rgba(74,155,135,.2); color:#4A9B87; }
+    .mc-tired .mc-t     { color:#2E7B67; }
+    #warmup-input { width:100%; border:none; border-bottom:1.5px solid #DFF0EC; outline:none; font-size:20px; font-family:'DM Sans',sans-serif; font-weight:300; color:#1C2B35; background:transparent; padding:10px 0; text-align:center; }
+
+    /* ── BREATHE ── */
+    #breathe .orb-wrap {
+      position:relative; width:180px; height:180px;
+      margin:0 auto 32px; flex-shrink:0;
+    }
+    .orb-outer {
+      position:absolute; inset:0; border-radius:50%;
+      background:radial-gradient(circle, rgba(46,139,122,.15) 0%, rgba(46,139,122,.04) 70%, transparent 100%);
+      animation:pulse 4s ease-in-out infinite;
+    }
+    .orb {
+      position:absolute; inset:20px; border-radius:50%;
+      background:radial-gradient(circle at 38% 38%, #4ABBA8, #2E8B7A);
+      box-shadow:0 8px 32px rgba(46,139,122,.35);
+      display:flex; align-items:center; justify-content:center;
+    }
+    .orb-label {
+      font-family:'Lora',serif; font-size:13px; color:white;
+      font-weight:400; letter-spacing:.5px; text-align:center;
+      line-height:1.4; padding:0 12px;
+    }
+    .breath-phase {
+      font-family:'Lora',serif; font-size:clamp(22px,5.5vw,26px);
+      color:#1C2B35; margin-bottom:6px;
+    }
+    .breath-count {
+      font-size:clamp(36px,9vw,48px); color:#2E8B7A;
+      font-family:'Lora',serif; letter-spacing:-2px;
+      margin-bottom:6px; font-weight:400;
+    }
+    .breath-sub { font-size:13px; color:#5E8A84; font-weight:300; margin-bottom:32px; }
+    .progress-dots { display:flex; gap:8px; margin-bottom:28px; }
+    .pdot {
+      width:8px; height:8px; border-radius:50%;
+      background:#DFF0EC; transition:background .4s ease;
+    }
+    .pdot.done { background:#2E8B7A; }
+
+    /* ── QUESTION ── */
+    #question .q-card {
+      background:white; border:1.5px solid #DFF0EC;
+      border-radius:20px; padding:24px 20px; width:100%;
+      margin-bottom:20px; box-shadow:0 2px 16px rgba(46,139,122,.07);
+    }
+    .q-label {
+      font-size:10px; letter-spacing:2.5px; text-transform:uppercase;
+      color:#5E8A84; margin-bottom:14px; font-weight:500;
+    }
+    .q-text {
+      font-family:'Lora',serif; font-size:clamp(17px,4.5vw,20px);
+      color:#1C2B35; line-height:1.55; margin-bottom:16px;
+    }
+    .q-input {
+      width:100%; border:none; border-bottom:1.5px solid #DFF0EC;
+      outline:none; font-size:15px; font-family:'DM Sans',sans-serif;
+      font-weight:300; color:#1C2B35; background:transparent;
+      padding:10px 0; line-height:1.5;
+    }
+    .q-input::placeholder { color:#5E8A84; }
+    .q-skip {
+      font-size:12px; color:#5E8A84; background:none; border:none;
+      cursor:pointer; font-family:'DM Sans',sans-serif;
+      margin-top:4px; padding:8px; display:block;
+    }
+
+    /* ── READY ── */
+    #ready .ready-card {
+      background:white; border:1.5px solid #DFF0EC;
+      border-radius:20px; padding:20px; width:100%;
+      margin-bottom:24px; box-shadow:0 2px 16px rgba(46,139,122,.07);
+    }
+    #ready .answer-label {
+      font-size:10px; letter-spacing:2px; text-transform:uppercase;
+      color:#5E8A84; margin-bottom:8px;
+    }
+    #ready .answer-text {
+      font-family:'Lora',serif; font-size:16px; color:#2E8B7A;
+      font-style:italic; line-height:1.55;
+    }
+    .ready-msg {
+      font-family:'Lora',serif; font-size:clamp(20px,5vw,24px);
+      color:#1C2B35; margin-bottom:8px; line-height:1.4;
+    }
+    .ready-sub { font-size:14px; color:#7A9E9A; font-weight:300; margin-bottom:6px; }
+  </style>
+</head>
+<body>
+
+  <!-- INTRO — choose your state -->
+  <div class="screen active" id="intro">
+    <div class="dolphin">🐬</div>
+    <div class="s-title">Not ready yet?</div>
+    <div class="s-sub">Pick what's closest to how you feel.<br/>60 seconds. No pressure.</div>
+    <div class="cards" style="width:100%;margin-bottom:20px;">
+      <div class="mode-card mc-paralysis" onclick="startReset('paralysis')" role="button" aria-label="I am stuck and can't start">
+        <div class="mc-em">🧊</div>
+        <div class="mc-t">I'm stuck / can't start</div>
+        <div class="mc-d">One breath. One question. That's all.</div>
+      </div>
+      <div class="mode-card mc-curious" onclick="startWarmup()" role="button" aria-label="I am procrastinating or avoiding">
+        <div class="mc-em">🌀</div>
+        <div class="mc-t">I'm avoiding / procrastinating</div>
+        <div class="mc-d">Word association warm-up. Gets your brain moving in 3 rounds.</div>
+      </div>
+      <div class="mode-card mc-tired" onclick="startReset('tired')" role="button" aria-label="I am tired or having a hard day">
+        <div class="mc-em">😴</div>
+        <div class="mc-t">I'm tired / it's a hard day</div>
+        <div class="mc-d">Life feels heavy. Just breathe. Nothing is required of you.</div>
+      </div>
+    </div>
+    <button class="btn-back" onclick="goBack()">← Back to Steddi</button>
+  </div>
+
+  <!-- WARMUP -->
+  <div class="screen" id="warmup">
+    <div class="progress-dots">
+      <div class="pdot" id="wdot0"></div>
+      <div class="pdot" id="wdot1"></div>
+      <div class="pdot" id="wdot2"></div>
+    </div>
+    <div class="dolphin" style="margin-bottom:16px">🐬</div>
+    <div id="warmup-type-label" class="q-label">Word association</div>
+    <div id="warmup-prompt" class="q-text" style="font-size:clamp(28px,7vw,36px);letter-spacing:-0.5px;margin-bottom:8px">ocean</div>
+    <div id="warmup-hint" class="ready-sub" style="margin-bottom:24px">First word that comes to mind.</div>
+    <input class="q-input" id="warmup-input" placeholder="..." autocomplete="off" autocorrect="off" style="text-align:center;font-size:20px;margin-bottom:24px"/>
+    <div style="display:flex;gap:12px;justify-content:center">
+      <button class="btn-primary" id="warmup-next-btn" onclick="nextWarmupRound()">Next →</button>
+      <button class="btn-back" onclick="skipWarmupRound()" style="margin-top:0">Skip</button>
+    </div>
+  </div>
+
+  <!-- WARMUP DONE -->
+  <div class="screen" id="warmup-done">
+    <div class="progress-dots">
+      <div class="pdot done"></div>
+      <div class="pdot done"></div>
+      <div class="pdot done"></div>
+    </div>
+    <div class="dolphin" style="margin-bottom:16px">🐬</div>
+    <div class="ready-msg">Your brain is warmed up.</div>
+    <div class="ready-sub" style="margin-bottom:28px">3 rounds done. You're more ready than you think.</div>
+    <div id="warmup-responses" style="width:100%;margin-bottom:24px"></div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button class="btn-primary" onclick="goBack()">Back to Steddi →</button>
+      <button class="btn-back" onclick="startWarmup()" style="margin-top:0">One more round</button>
+    </div>
+  </div>
+  <div class="screen" id="breathe">
+    <div class="progress-dots" id="progress-dots">
+      <div class="pdot" id="dot0"></div>
+      <div class="pdot" id="dot1"></div>
+      <div class="pdot" id="dot2"></div>
+    </div>
+    <div class="orb-wrap">
+      <div class="orb-outer"></div>
+      <div class="orb" id="orb" role="status" aria-live="polite">
+        <div class="orb-label" id="orb-label">Breathe in</div>
+      </div>
+    </div>
+    <div class="breath-phase" id="breath-phase">Breathe in</div>
+    <div class="breath-count" id="breath-count">4</div>
+    <div class="breath-sub" id="breath-sub">Follow the orb</div>
+  </div>
+
+  <!-- QUESTION -->
+  <div class="screen" id="question">
+    <div class="progress-dots">
+      <div class="pdot done"></div>
+      <div class="pdot done" id="dot-q"></div>
+      <div class="pdot"></div>
+    </div>
+    <div class="q-card">
+      <div class="q-label" id="q-label">One question</div>
+      <div class="q-text" id="q-text">What's one small thing that would make today feel okay?</div>
+      <input class="q-input" id="q-input" placeholder="Type something, or just think it..." autocomplete="off" autocorrect="off"/>
+      <button class="q-skip" onclick="goToReady()">Skip — just thinking →</button>
+    </div>
+    <button class="btn-primary" onclick="goToReady()">Continue →</button>
+  </div>
+
+  <!-- READY -->
+  <div class="screen" id="ready">
+    <div class="progress-dots">
+      <div class="pdot done"></div>
+      <div class="pdot done"></div>
+      <div class="pdot done"></div>
+    </div>
+    <div class="dolphin" style="margin-bottom:16px">🐬</div>
+    <div class="ready-msg" id="ready-msg">Your brain is ready.</div>
+    <div class="ready-sub" id="ready-sub">That took less than a minute.</div>
+
+    <div class="ready-card" id="answer-card" style="display:none">
+      <div class="answer-label">You said</div>
+      <div class="answer-text" id="answer-text"></div>
+    </div>
+
+    <div style="margin-bottom:8px;margin-top:8px;">
+      <button class="btn-primary" onclick="goBack()">Back to Steddi →</button>
+    </div>
+    <button class="btn-back" onclick="show('intro')">Do it again</button>
+  </div>
+
+<script>
+  const WORD_ASSOCIATIONS = [
+    "ocean","morning","quiet","breathe","yellow","soft",
+    "today","begin","open","simple","light","ready",
+    "focus","calm","possible","one","here","now",
+  ];
+
+  const SENTENCE_PROMPTS = [
+    "Right now I feel like...",
+    "One thing I'm looking forward to today is...",
+    "Something small that would help me right now is...",
+    "One tiny win I could have today is...",
+    "Something I'm letting go of right now is...",
+    "A word that describes how I want to feel today is...",
+  ];
+
+  let warmupRound = 0;
+  let warmupType = 'word';
+  let warmupResponses = [];
+
+  function startWarmup() {
+    warmupRound = 0; warmupResponses = [];
+    setWarmupRound(0, 'word');
+    show('warmup');
+    setTimeout(()=>document.getElementById('warmup-input').focus(), 300);
+  }
+
+  function setWarmupRound(round, type) {
+    warmupRound = round; warmupType = type;
+    // Progress dots
+    ['wdot0','wdot1','wdot2'].forEach((id,i)=>{
+      document.getElementById(id).classList.toggle('done', i <= round);
+    });
+    if(type === 'word') {
+      document.getElementById('warmup-type-label').textContent = 'Word association';
+      const word = WORD_ASSOCIATIONS[Math.floor(Math.random()*WORD_ASSOCIATIONS.length)];
+      document.getElementById('warmup-prompt').textContent = word;
+      document.getElementById('warmup-hint').textContent = 'First word that comes to mind. No wrong answer.';
+      document.getElementById('warmup-prompt').style.fontSize = 'clamp(28px,7vw,36px)';
+    } else {
+      document.getElementById('warmup-type-label').textContent = 'Finish the sentence';
+      const prompt = SENTENCE_PROMPTS[Math.floor(Math.random()*SENTENCE_PROMPTS.length)];
+      document.getElementById('warmup-prompt').textContent = prompt;
+      document.getElementById('warmup-hint').textContent = 'No right answer. Just what comes naturally.';
+      document.getElementById('warmup-prompt').style.fontSize = 'clamp(17px,4.5vw,20px)';
+    }
+    document.getElementById('warmup-input').value = '';
+    document.getElementById('warmup-next-btn').textContent = round < 2 ? 'Next →' : 'Done →';
+  }
+
+  function nextWarmupRound() {
+    const val = document.getElementById('warmup-input').value.trim();
+    if(val) warmupResponses.push({type: warmupType, prompt: document.getElementById('warmup-prompt').textContent, answer: val});
+    if(warmupRound >= 2) { showWarmupDone(); return; }
+    const nextType = warmupType === 'word' ? 'sentence' : 'word';
+    setWarmupRound(warmupRound + 1, nextType);
+    setTimeout(()=>document.getElementById('warmup-input').focus(), 200);
+  }
+
+  function skipWarmupRound() {
+    if(warmupRound >= 2) { showWarmupDone(); return; }
+    const nextType = warmupType === 'word' ? 'sentence' : 'word';
+    setWarmupRound(warmupRound + 1, nextType);
+    setTimeout(()=>document.getElementById('warmup-input').focus(), 200);
+  }
+
+  function showWarmupDone() {
+    const container = document.getElementById('warmup-responses');
+    container.innerHTML = warmupResponses.map(r=>`
+      <div style="padding:10px 14px;background:white;border:1.5px solid #DFF0EC;border-radius:12px;margin-bottom:8px;text-align:left">
+        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#9ABFBA;margin-bottom:4px">${r.type==='word'?r.prompt:''}</div>
+        <div style="font-size:14px;color:#1C2B35;font-weight:300;font-style:${r.type==='sentence'?'italic':'normal'}">${r.type==='sentence'?'"'+r.answer+'"':r.answer}</div>
+      </div>`).join('');
+    show('warmup-done');
+  }
+
+  // Allow Enter on warmup input
+  document.getElementById('warmup-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); nextWarmupRound(); }
+  });
+
+  const QUESTIONS = {
+    paralysis: [
+      "What's one tiny thing you could do in the next 2 minutes?",
+      "What would feel like a win today, even a small one?",
+      "If you could only do one thing today, what would it be?",
+    ],
+    curious: [
+      "What's one thing you're actually curious about right now?",
+      "What would you do today if no one was watching or judging?",
+      "What's the real reason you're avoiding the thing?",
+    ],
+    tired: [
+      "What's one thing that would make today feel okay?",
+      "What do you actually need right now?",
+      "What would feel like rest to you today?",
+    ],
+  };
+
+  const READY_MSGS = {
+    paralysis: ["One breath. One thought.\nYou're more ready than you were.", "That's enough to start."],
+    curious:   ["Curiosity is back.\nLet's use it.", "60 seconds well spent."],
+    tired:     ["You showed up.\nThat's enough for now.", "Come back when you're ready. No rush."],
+  };
+
+  const BREATH_CYCLES = {
+    paralysis: [{phase:"Breathe in", secs:4, anim:"breatheIn"}, {phase:"Hold", secs:4, anim:"hold"}, {phase:"Breathe out", secs:6, anim:"breatheOut"}],
+    curious:   [{phase:"Breathe in", secs:4, anim:"breatheIn"}, {phase:"Breathe out", secs:6, anim:"breatheOut"}],
+    tired:     [{phase:"Breathe in slowly", secs:5, anim:"breatheIn"}, {phase:"Hold gently", secs:3, anim:"hold"}, {phase:"Let it go", secs:7, anim:"breatheOut"}],
+  };
+
+  let currentMode = null;
+  let breathTimer = null;
+
+  function show(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    const el = document.getElementById(id);
+    if (el) { el.style.animation='none'; el.classList.add('active'); requestAnimationFrame(()=>{ el.style.animation=''; }); }
+  }
+
+  function startReset(mode) {
+    currentMode = mode;
+    show('breathe');
+    document.getElementById('dot0').classList.add('done');
+    document.getElementById('dot1').classList.remove('done');
+    document.getElementById('dot2').classList.remove('done');
+    runBreathing(mode);
+  }
+
+  function runBreathing(mode) {
+    clearInterval(breathTimer);
+    const cycles = BREATH_CYCLES[mode];
+    const REPEATS = mode === 'tired' ? 2 : 1;
+    let cycleIdx = 0, repeat = 0, countdown = cycles[0].secs;
+    const orb = document.getElementById('orb');
+
+    function applyPhase(c) {
+      document.getElementById('breath-phase').textContent = c.phase;
+      document.getElementById('breath-count').textContent = c.secs;
+      document.getElementById('orb-label').textContent = c.phase;
+      orb.style.animation = 'none';
+      requestAnimationFrame(() => {
+        orb.style.animation = `${c.anim} ${c.secs}s ease-in-out forwards`;
+      });
+      countdown = c.secs;
+    }
+
+    applyPhase(cycles[0]);
+
+    breathTimer = setInterval(() => {
+      countdown--;
+      document.getElementById('breath-count').textContent = Math.max(0, countdown);
+      if (countdown <= 0) {
+        cycleIdx++;
+        if (cycleIdx >= cycles.length) {
+          cycleIdx = 0; repeat++;
+          if (repeat >= REPEATS) {
+            clearInterval(breathTimer);
+            setTimeout(() => goToQuestion(), 600);
+            return;
+          }
+        }
+        applyPhase(cycles[cycleIdx]);
+      }
+    }, 1000);
+  }
+
+  function goToQuestion() {
+    clearInterval(breathTimer);
+    const qs = QUESTIONS[currentMode] || QUESTIONS.tired;
+    const q = qs[Math.floor(Math.random() * qs.length)];
+    document.getElementById('q-text').textContent = q;
+    document.getElementById('q-input').value = '';
+    show('question');
+    setTimeout(() => document.getElementById('q-input').focus(), 400);
+  }
+
+  function goToReady() {
+    const answer = document.getElementById('q-input').value.trim();
+    const [msg, sub] = READY_MSGS[currentMode] || READY_MSGS.tired;
+    document.getElementById('ready-msg').textContent = msg.replace('\n', '\n');
+    document.getElementById('ready-msg').style.whiteSpace = 'pre-line';
+    document.getElementById('ready-sub').textContent = sub;
+    const card = document.getElementById('answer-card');
+    if (answer) {
+      document.getElementById('answer-text').textContent = `"${answer}"`;
+      card.style.display = 'block';
+    } else {
+      card.style.display = 'none';
+    }
+    show('ready');
+  }
+
+  function goBack() {
+    clearInterval(breathTimer);
+    if (history.length > 1) history.back();
+    else location.href = '/';
+  }
+
+  // Allow Enter on input to continue
+  document.getElementById('q-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); goToReady(); }
+  });
+</script>
+</body>
+</html>
