@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="Steddi Today"/>
+  <meta name="theme-color" content="#0F1923"/>
+  <title>Steddi Today</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;700&family=Lora:wght@400&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+    html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased;}
+    body{background:#0F1923;color:#F5F0EA;display:flex;flex-direction:column;
+      min-height:100vh;min-height:-webkit-fill-available;
+      padding:max(env(safe-area-inset-top,20px),20px) 0 max(env(safe-area-inset-bottom,16px),16px);}
+    .bg{position:fixed;inset:0;z-index:0;
+      background:radial-gradient(ellipse at 15% 40%,rgba(46,139,122,.18) 0%,transparent 55%),
+                 radial-gradient(ellipse at 85% 15%,rgba(224,120,64,.14) 0%,transparent 50%),#0F1923;}
+    .widget{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;padding:0 20px;gap:0;}
+    .w-header{display:flex;align-items:flex-end;justify-content:space-between;
+      padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:14px;}
+    .w-time{font-family:'Lora',serif;font-size:clamp(40px,12vw,58px);font-weight:400;letter-spacing:-2px;line-height:1;}
+    .w-date{text-align:right;}
+    .w-date-day{font-size:12px;color:rgba(245,240,234,.5);font-weight:300;text-transform:uppercase;letter-spacing:1.5px;}
+    .w-date-num{font-family:'Lora',serif;font-size:26px;color:#E07840;font-weight:400;line-height:1;}
+    .w-intention{font-family:'Lora',serif;font-size:13px;color:rgba(224,120,64,.7);font-style:italic;
+      margin-bottom:14px;padding:8px 12px;background:rgba(224,120,64,.06);
+      border-radius:10px;border-left:2px solid rgba(224,120,64,.3);line-height:1.5;}
+    .w-label{font-size:9px;letter-spacing:3px;text-transform:uppercase;
+      color:rgba(245,240,234,.3);font-weight:700;margin-bottom:8px;}
+    .w-tasks{display:flex;flex-direction:column;gap:7px;flex:1;overflow:hidden;}
+    .w-task{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:12px;
+      background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);}
+    .w-task.active{background:rgba(224,120,64,.10);border-color:rgba(224,120,64,.25);}
+    .w-task.done{opacity:.4;}
+    .w-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+    .w-task-name{flex:1;font-size:clamp(13px,4vw,16px);font-weight:600;line-height:1.3;word-break:break-word;}
+    .w-task.done .w-task-name{text-decoration:line-through;}
+    .w-badge{font-size:10px;padding:2px 7px;border-radius:50px;font-weight:500;flex-shrink:0;}
+    .w-upcoming{margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.07);}
+    .w-upcoming-item{display:flex;align-items:center;gap:8px;padding:6px 0;
+      border-bottom:1px solid rgba(255,255,255,.04);}
+    .w-upcoming-date{font-size:10px;color:rgba(245,240,234,.4);font-weight:500;min-width:52px;}
+    .w-upcoming-name{font-size:12px;color:rgba(245,240,234,.7);flex:1;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .w-footer{display:flex;align-items:center;justify-content:space-between;
+      padding-top:12px;margin-top:8px;border-top:1px solid rgba(255,255,255,.06);}
+    .w-logo{font-family:'Lora',serif;font-size:13px;color:rgba(224,120,64,.6);}
+    .w-streak{font-size:12px;color:#E07840;font-weight:600;}
+    .w-open{font-size:11px;color:rgba(245,240,234,.4);text-decoration:none;
+      background:rgba(255,255,255,.06);padding:5px 12px;border-radius:50px;}
+    .w-sync{font-size:9px;color:rgba(245,240,234,.25);margin-top:2px;}
+    .w-empty{flex:1;display:flex;flex-direction:column;align-items:center;
+      justify-content:center;gap:8px;opacity:.4;padding:16px 0;}
+    .w-empty-icon{font-size:32px;}
+    .w-empty-text{font-size:12px;color:rgba(245,240,234,.6);text-align:center;line-height:1.6;}
+
+    /* Setup */
+    .setup{position:fixed;inset:0;z-index:10;background:#0F1923;display:flex;
+      flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;gap:16px;}
+    .setup h2{font-family:'Lora',serif;font-size:22px;color:#F5F0EA;text-align:center;}
+    .setup p{font-size:13px;color:rgba(245,240,234,.5);text-align:center;line-height:1.7;max-width:280px;}
+    .setup input{width:100%;padding:12px 16px;font-size:20px;text-align:center;font-weight:700;
+      letter-spacing:4px;text-transform:uppercase;border:2px solid rgba(255,255,255,.15);
+      border-radius:12px;background:rgba(255,255,255,.06);color:#F5F0EA;
+      outline:none;font-family:'DM Sans',sans-serif;}
+    .setup input:focus{border-color:#E07840;}
+    .setup-btn{width:100%;padding:13px;background:#E07840;color:white;border:none;
+      border-radius:50px;font-size:15px;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;}
+    .setup-btn-sec{width:100%;padding:11px;background:transparent;color:rgba(245,240,234,.4);
+      border:1px solid rgba(255,255,255,.12);border-radius:50px;font-size:13px;
+      font-family:'DM Sans',sans-serif;cursor:pointer;}
+  </style>
+</head>
+<body>
+<div class="bg"></div>
+
+<div class="setup" id="setup">
+  <div style="font-size:36px">🐬</div>
+  <h2>Steddi Today</h2>
+  <p>Enter your family code to sync tasks, or use this device's data.</p>
+  <input type="text" id="code-in" placeholder="FAMILY CODE" maxlength="16" autocapitalize="characters" autocorrect="off"/>
+  <button class="setup-btn" onclick="connect()">Connect →</button>
+  <button class="setup-btn-sec" onclick="localOnly()">Use this device</button>
+</div>
+
+<div class="widget" id="widget" style="display:none">
+  <div class="w-header">
+    <div class="w-time" id="w-time">--:--</div>
+    <div class="w-date">
+      <div class="w-date-day" id="w-weekday"></div>
+      <div class="w-date-num" id="w-daynum"></div>
+    </div>
+  </div>
+  <div class="w-intention" id="w-int" style="display:none"></div>
+  <div class="w-label">TODAY</div>
+  <div class="w-tasks" id="w-tasks"></div>
+  <div class="w-upcoming" id="w-upcoming" style="display:none">
+    <div class="w-label" style="margin-bottom:6px">COMING UP</div>
+    <div id="w-up-list"></div>
+  </div>
+  <div class="w-footer">
+    <div>
+      <div class="w-logo">steddi 🐬</div>
+      <div class="w-sync" id="w-sync"></div>
+    </div>
+    <div class="w-streak" id="w-streak"></div>
+    <a href="/" class="w-open">Open →</a>
+  </div>
+</div>
+
+<script>
+const SYNC_KEY='steddi_family_code', LO_KEY='steddi_widget_local';
+let code=null, lo=false;
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function fmt(t){try{return new Date('2000-01-01T'+t).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});}catch(e){return t;}}
+function relDate(ds){
+  try{const d=new Date(ds+'T12:00:00'),t=new Date();t.setHours(0,0,0,0);
+  const diff=Math.round((d-t)/(864e5));
+  if(diff===0)return'Today';if(diff===1)return'Tomorrow';
+  if(diff<7)return d.toLocaleDateString('en-US',{weekday:'short'});
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});}catch(e){return ds;}
+}
+
+function init(){
+  const s=localStorage.getItem(SYNC_KEY);
+  if(s){code=s;showWidget();}
+  else if(localStorage.getItem(LO_KEY)){lo=true;showWidget();}
+}
+function connect(){
+  const raw=document.getElementById('code-in').value.trim();
+  code=raw.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,32);
+  if(code.length<3){alert('Code must be at least 3 characters');return;}
+  localStorage.setItem(SYNC_KEY,code);lo=false;showWidget();
+}
+function localOnly(){lo=true;localStorage.setItem(LO_KEY,'1');showWidget();}
+document.getElementById('code-in').addEventListener('keydown',e=>{if(e.key==='Enter')connect();});
+
+function showWidget(){
+  document.getElementById('setup').style.display='none';
+  document.getElementById('widget').style.display='flex';
+  tick(); setInterval(tick,1000);
+  render(); setInterval(render,30000);
+  window.addEventListener('storage',render);
+}
+
+function tick(){
+  const n=new Date();
+  document.getElementById('w-time').textContent=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');
+  document.getElementById('w-weekday').textContent=n.toLocaleDateString('en-US',{weekday:'long'});
+  document.getElementById('w-daynum').textContent=n.getDate();
+}
+
+async function render(){
+  let data=null;
+  if(lo||!code){
+    try{const r=localStorage.getItem('steddi_v3');data=r?JSON.parse(r):null;}catch(e){}
+    document.getElementById('w-sync').textContent='Local device';
+  } else {
+    try{
+      const r=await fetch('/api/family?code='+encodeURIComponent(code));
+      if(r.ok){const j=await r.json();if(j.ok)data=j;}
+      document.getElementById('w-sync').textContent='Synced '+new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    }catch(e){
+      try{const r=localStorage.getItem('steddi_v3');data=r?JSON.parse(r):null;}catch(e2){}
+      document.getElementById('w-sync').textContent='Offline';
+    }
+  }
+
+  // Intention
+  const intEl=document.getElementById('w-int');
+  const intent=data?.intention||null;
+  if(intent){intEl.textContent='"'+intent+'"';intEl.style.display='block';}
+  else{intEl.style.display='none';}
+
+  // Streak
+  const sc=data?.streak||0;
+  document.getElementById('w-streak').textContent=sc>1?'🔥 '+sc+' days':'';
+
+  // Tasks
+  const active=data?.activeTasks||[], done=data?.doneTasks||[];
+  const tasks=[...active.map(t=>({...t,type:'active'})),...done.map(t=>({...t,type:'done'}))];
+  const el=document.getElementById('w-tasks');
+  if(!tasks.length){
+    el.innerHTML='<div class="w-empty"><div class="w-empty-icon">🌅</div><div class="w-empty-text">Open Steddi to plan your day</div></div>';
+  } else {
+    el.innerHTML=tasks.map(t=>`<div class="w-task ${t.type}">
+      <div class="w-dot" style="background:${t.type==='active'?'#E07840':t.type==='done'?'#5A8A6E':'#888'}"></div>
+      <div class="w-task-name">${esc(t.text)}</div>
+      ${t.type==='active'?'<span class="w-badge" style="background:rgba(224,120,64,.2);color:#E8A060">Now</span>':''}
+      ${t.type==='done'?'<span class="w-badge" style="background:rgba(90,138,110,.2);color:#7AC896">✓</span>':''}
+    </div>`).join('');
+  }
+
+  // Upcoming
+  const def=data?.deferred||[];
+  const upEl=document.getElementById('w-upcoming');
+  if(def.length){
+    upEl.style.display='block';
+    document.getElementById('w-up-list').innerHTML=def.slice(0,4).map(t=>`
+      <div class="w-upcoming-item">
+        <span class="w-upcoming-date">${relDate(t.date)}${t.time?' '+fmt(t.time):''}</span>
+        <span class="w-upcoming-name">${esc(t.text)}</span>
+        <span style="font-size:10px;color:rgba(122,110,168,.8)">📌</span>
+      </div>`).join('');
+  } else { upEl.style.display='none'; }
+}
+init();
+</script>
+</body>
+</html>
